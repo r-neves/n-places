@@ -2,9 +2,15 @@ import React from 'react';
 import logo from './logo.svg';
 import './App.css';
 import {Map as MapComponent} from 'react-map-gl/maplibre';
+import { NotionIntegration } from './services/places/notion-integration';
 
 
 function App() {
+  const service = new NotionIntegration();
+  service.getDBLastUpdatedDate("ae713d53768640058a236c4bd1691198").then((date) => {
+    console.log(date);
+  });
+
   return (
     <div className="App">
       <header className="App-header">
