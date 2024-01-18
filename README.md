@@ -2,7 +2,7 @@
 
 Notion Places is a Progressive Web App that allows you to see places that you stored on Notion databases. These places can be visualized on a map or a list, and filtered by different attributes. 
 
-This app is not supposed to replace Google Maps, it simply does a better job at showing and filtering your places.
+This app is not supposed to replace Google Maps, it simply does a better job at showing and filtering the places you want to keep.
 
 ## Usage
 
