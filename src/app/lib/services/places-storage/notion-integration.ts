@@ -1,8 +1,11 @@
+import { dummyData } from "./dummy-data";
+
 const NOTION_API_URL = "https://api.notion.com/v1";
 
-interface NotionDBResponse {
-	object: string;
-	last_edited_time: string;
+interface PlaceItem {
+	name: string;
+	longitude: number;
+	latitude: number;
 }
 
 export async function getDBLastUpdatedDate(databaseID: string): Promise<Date> {
@@ -23,4 +26,8 @@ export async function getDBLastUpdatedDate(databaseID: string): Promise<Date> {
 			console.log(error);
 			return error;
 		});
+}
+
+export async function getDBEntries(databaseID: string): Promise<PlaceItem[]> {
+	return dummyData;
 }
