@@ -1,6 +1,7 @@
 import Image from "next/image";
 import styles from "./page.module.css";
 import { getDBLastUpdatedDate } from "./lib/services/places-storage/notion-integration";
+import { MapComponent } from "./ui/Map";
 
 export default async function Home() {
 	const [date] = await Promise.all([
@@ -98,6 +99,7 @@ export default async function Home() {
 					</p>
 				</a>
 			</div>
+			<MapComponent />
 		</main>
 	);
 }

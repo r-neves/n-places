@@ -18,6 +18,10 @@ export default function RootLayout({
 		<html lang="en">
 			<head>
 				<link rel="manifest" href="/manifest.json" />
+				<link
+					rel="stylesheet"
+					href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css"
+				/>
 			</head>
 			<body className={inter.className}>{children}</body>
 		</html>
