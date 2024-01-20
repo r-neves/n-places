@@ -1,11 +1,15 @@
 import Image from "next/image";
 import styles from "./page.module.css";
-import { getDBLastUpdatedDate } from "./lib/services/places-storage/notion-integration";
+import {
+	getDBEntries,
+	getDBLastUpdatedDate,
+} from "./lib/services/places-storage/notion-integration";
 import { MapComponent } from "./ui/Map";
 
 export default async function Home() {
-	const [date] = await Promise.all([
+	const [date, dbEntries] = await Promise.all([
 		getDBLastUpdatedDate("ae713d53768640058a236c4bd1691198"),
+		getDBEntries("ae713d53768640058a236c4bd1691198"),
 	]);
 
 	return (
@@ -15,9 +19,7 @@ export default async function Home() {
 					Get started by editing&nbsp;
 					<code className={styles.code}>src/app/page.tsx</code>
 				</p>
-        <p>
-          Last updated: {date.toUTCString()}
-        </p>
+				<p>Last updated: {date.toUTCString()}</p>
 				<div>
 					<a
 						href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
