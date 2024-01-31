@@ -12,6 +12,8 @@ export default async function Home() {
 		getDBEntries("ae713d53768640058a236c4bd1691198"),
 	]);
 
+	console.log(`Total of ${dbEntries.length} data points`);
+
 	return (
 		<main className={styles.main}>
 			<div className={styles.description}>
@@ -101,7 +103,7 @@ export default async function Home() {
 					</p>
 				</a>
 			</div>
-			<MapComponent />
+			<MapComponent dataPoints={dbEntries} />
 		</main>
 	);
 }

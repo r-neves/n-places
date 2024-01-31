@@ -10,7 +10,7 @@ const typeLabel = "type";
 
 const notVisitedValue = "not visited";
 
-interface PlaceItem {
+export interface PlaceItem {
 	name: string;
 	mapsUrl: string;
 	longitude: number;
@@ -44,16 +44,59 @@ export async function getDBLastUpdatedDate(databaseID: string): Promise<Date> {
 export async function getDBEntries(databaseID: string): Promise<PlaceItem[]> {
 	const placeItems: PlaceItem[] = [];
 
-	const jsonResponse = JSON.parse(dummyData);
-	jsonResponse.results.slice(0, 10).map((entry: any) => {
+	// const jsonResponse = JSON.parse(dummyData);
+	// jsonResponse.results.map((entry: any) => {
+	// 	placeItems.push(jsonEntryToPlaceItem(entry));
+	// });
+
+	let res = await fetch(`${NOTION_API_URL}/databases/${databaseID}/query`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+			"Notion-Version": `${process.env.NOTION_API_VERSION}`,
+		},
+	},).then((response) => response.json());
+
+	console.log("Received response from Notion " + res.results.length);
+
+	res.results.map((entry: any) => {
 		placeItems.push(jsonEntryToPlaceItem(entry));
 	});
 
-	for (let i = 0; i < placeItems.length; i++) {
-		const coordinates = await getCoordinatesFromMapsUrl(placeItems[i].mapsUrl);
-		placeItems[i].latitude = coordinates.latitude;
-		placeItems[i].longitude = coordinates.longitude;
+	while (res.has_more) {
+		res = await fetch(`${NOTION_API_URL}/databases/${databaseID}/query`, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+				'Content-type': 'application/json',
+				"Notion-Version": `${process.env.NOTION_API_VERSION}`,
+			},
+			body: JSON.stringify({
+				start_cursor: res.next_cursor,
+			}),
+		}).then((response) => response.json());
+
+		console.log("Received response from Notion: " + res.results.length);
+
+		res.results.map((entry: any) => {
+			placeItems.push(jsonEntryToPlaceItem(entry));
+		});
 	}
+
+	const coordinatePromises: Promise<{ latitude: number; longitude: number }>[] =
+		[];
+	for (let i = 0; i < placeItems.length; i++) {
+		coordinatePromises.push(getCoordinatesFromMapsUrl(placeItems[i].mapsUrl));
+	}
+
+	await Promise.all(coordinatePromises).then((coordinates) => {
+		for (let i = 0; i < placeItems.length; i++) {
+			placeItems[i].latitude = coordinates[i].latitude;
+			placeItems[i].longitude = coordinates[i].longitude;
+		}
+	});
+
+	console.log("Finished getting coordinates");
 
 	return placeItems;
 }
