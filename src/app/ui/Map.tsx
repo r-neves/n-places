@@ -2,7 +2,7 @@
 
 import styles from "./map.module.css";
 import { useEffect, useRef } from "react";
-import { Map as MapGL, AttributionControl } from "maplibre-gl";
+import { Map as MapGL, GeolocateControl } from "maplibre-gl";
 import { pulsingDot } from "./pulsing-dot";
 import { PlaceItem } from "../lib/services/places-storage/notion-integration";
 
@@ -16,6 +16,22 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 	async function loadImages() {
 		// biome-ignore lint/style/noNonNullAssertion:
 		map.current?.addImage("pulsing-dot", pulsingDot(map.current!));
+	}
+
+	function addGeolocationControl() {
+		// navigator.geolocation.getCurrentPosition((position) => {
+		// 	console.log("Geolocation", position);
+		// });
+
+		map.current?.addControl(
+			new GeolocateControl({
+				positionOptions: {
+					enableHighAccuracy: true,
+				},
+				trackUserLocation: true,
+			}),
+			"bottom-right",
+		);
 	}
 
 	function setSourceData() {
@@ -52,6 +68,7 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 
 	async function handleMapLoad(loadImgsPromise: Promise<void>) {
 		await loadImgsPromise;
+		//addGeolocationControl();
 		setSourceData();
 		addLayers();
 		addEventListeners();
