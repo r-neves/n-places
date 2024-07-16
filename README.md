@@ -1,8 +1,12 @@
-# notion-places
+# n-places
 
-Notion Places is a Progressive Web App that allows you to see places that you stored on Notion databases. These places can be visualized on a map or a list, and filtered by different attributes. 
+> _"I haven't been everywhere, but it's on my list."_
+>
+> Susan Sontag
 
-This app is not supposed to replace Google Maps, it simply does a better job at showing and filtering the places you want to keep.
+N Places is a Progressive Web App that allows you to see places that you stored on Notion databases. These places can be visualized on a map or a list, and filtered by different attributes. 
+
+This app is not supposed to replace Google Maps, it simply does a better job at showing and filtering the places you want to keep, using Notion as a low usage database.
 
 ## Usage
 
