@@ -69,12 +69,30 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 
 	function addEventListeners() {
 		map.current?.on('click', 'points', (e) => {
+			if (!map.current) {
+				console.log("Map not loaded on point click");
+				return;
+			}
+
+			if (!e.features) {
+				console.log("No features on map point click");
+				return;
+			}
+
+			const geometry = e.features[0].geometry;
+			if (!geometry.type || geometry.type !== "Point") {
+				console.log("No geometry on point click");
+				return;
+			}
+
+			const coordinates = geometry.coordinates as [number, number];
+
             map.current?.flyTo({
-                center: e.features[0].geometry.coordinates,
+                center: coordinates,
 				speed: 0.5,
             });
 			new Popup()
-                .setLngLat(e.features[0].geometry.coordinates)
+                .setLngLat(coordinates)
                 .setHTML(`<p style="color: black">${e.features[0].properties.name}</p><p style="color: black">${e.features[0].properties.rating}</p>`)
                 .addTo(map.current);
         });
