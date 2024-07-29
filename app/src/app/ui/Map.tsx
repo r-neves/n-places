@@ -2,8 +2,9 @@
 
 import styles from "./map.module.css";
 import { useEffect, useRef } from "react";
-import { Map as MapGL, GeolocateControl } from "maplibre-gl";
+import { Map as MapGL, GeolocateControl, Popup } from "maplibre-gl";
 import { pulsingDot } from "./pulsing-dot";
+import { regularDot } from "./regular-dot";
 import { PlaceItem } from "../lib/services/places-storage/notion-integration";
 
 interface MapComponentProps {
@@ -15,7 +16,7 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 
 	async function loadImages() {
 		// biome-ignore lint/style/noNonNullAssertion:
-		map.current?.addImage("pulsing-dot", pulsingDot(map.current!));
+		map.current?.addImage("regular-dot", regularDot(map.current!));
 	}
 
 	function addGeolocationControl() {
@@ -45,6 +46,10 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 						type: "Point",
 						coordinates: [Number(entry.longitude), Number(entry.latitude)],
 					},
+					properties: {
+						name: entry.name,
+						rating: entry.rating,
+					}
 				})),
 			},
 		});
@@ -56,19 +61,30 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 			type: "symbol",
 			source: "points",
 			layout: {
-				"icon-image": "pulsing-dot",
+				"icon-image": "regular-dot",
 				"icon-allow-overlap": true,
 			},
 		});
 	}
 
 	function addEventListeners() {
+		map.current?.on('click', 'points', (e) => {
+            map.current?.flyTo({
+                center: e.features[0].geometry.coordinates,
+				speed: 0.5,
+            });
+			new Popup()
+                .setLngLat(e.features[0].geometry.coordinates)
+                .setHTML(`<p style="color: black">${e.features[0].properties.name}</p><p style="color: black">${e.features[0].properties.rating}</p>`)
+                .addTo(map.current);
+        });
+
 		// TODO on click and stuff
 	}
 
 	async function handleMapLoad(loadImgsPromise: Promise<void>) {
 		await loadImgsPromise;
-		//addGeolocationControl();
+		addGeolocationControl();
 		setSourceData();
 		addLayers();
 		addEventListeners();

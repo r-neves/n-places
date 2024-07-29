@@ -41,3 +41,6 @@ sw.js.map
 vercel.svg
 workbox***.js
 workbox***.js.map
+
+# env files
+.env

@@ -5,8 +5,10 @@ const NOTION_API_URL = "https://api.notion.com/v1";
 
 const nameLabel = "name";
 const mapLabel = "map";
-const visitedLabel = "visited";
+const visitedLabel = "rating";
 const typeLabel = "type";
+const priceLabel = "dish price";
+const ambienceLabel = "ambience";
 
 const notVisitedValue = "not visited";
 
@@ -17,6 +19,8 @@ export interface PlaceItem {
 	latitude: number;
 	visited: boolean;
 	rating: string;
+	dishPrice: string;
+	ambience: { tag: string; color: string }[];
 	tags: { tag: string; color: string }[];
 	textValues: { label: string; value: string }[];
 }
@@ -55,7 +59,7 @@ export async function getDBEntries(databaseID: string): Promise<PlaceItem[]> {
 			Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
 			"Notion-Version": `${process.env.NOTION_API_VERSION}`,
 		},
-	},).then((response) => response.json());
+	}).then((response) => response.json());
 
 	console.log("Received response from Notion " + res.results.length);
 
@@ -68,7 +72,7 @@ export async function getDBEntries(databaseID: string): Promise<PlaceItem[]> {
 			method: "POST",
 			headers: {
 				Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
-				'Content-type': 'application/json',
+				"Content-type": "application/json",
 				"Notion-Version": `${process.env.NOTION_API_VERSION}`,
 			},
 			body: JSON.stringify({
@@ -109,6 +113,8 @@ function jsonEntryToPlaceItem(entry: any): PlaceItem {
 		rating: "",
 		longitude: 0,
 		latitude: 0,
+		dishPrice: "",
+		ambience: [],
 		tags: [],
 		textValues: [],
 	};
@@ -116,23 +122,34 @@ function jsonEntryToPlaceItem(entry: any): PlaceItem {
 	Object.keys(entry.properties).forEach((key, _) => {
 		switch (key.toLocaleLowerCase()) {
 			case nameLabel: {
+				if (entry.properties[key].title[0] === undefined) {
+					console.log("Name is null");
+				}
+
 				newPlace.name = entry.properties[key].title[0].text.content;
 				break;
 			}
 			case mapLabel: {
-				newPlace.mapsUrl = entry.properties[key].url;
+				if (entry.properties[key].url !== null) {
+					newPlace.mapsUrl = entry.properties[key].url;
+				}
+				
 				break;
 			}
 			case visitedLabel: {
+				if (entry.properties[key].status.name === null) {
+					break
+				}
+
 				const visitedValue =
 					entry.properties[key].status.name.toLocaleLowerCase();
 				if (visitedValue === notVisitedValue) {
 					newPlace.visited = false;
 				} else {
 					newPlace.visited = true;
-					newPlace.rating = visitedValue.split("-")[1];
-					newPlace.rating.replace(" ", "");
+					newPlace.rating = visitedValue
 				}
+
 				break;
 			}
 			case typeLabel: {
@@ -140,6 +157,24 @@ function jsonEntryToPlaceItem(entry: any): PlaceItem {
 				for (const tagItem of typeValue) {
 					newPlace.tags.push({ tag: tagItem.name, color: tagItem.color });
 				}
+
+				break;
+			}
+			case priceLabel: {
+				if (entry.properties[key].select !== null) {
+					newPlace.dishPrice = entry.properties[key].select.name;
+				}
+
+				break;
+			}
+			case ambienceLabel: {
+				if (entry.properties[key].multi_select !== null) {
+					const ambienceValue = entry.properties[key].multi_select;
+					for (const tagItem of ambienceValue) {
+						newPlace.ambience.push({ tag: tagItem.name, color: tagItem.color });
+					}
+				}
+
 				break;
 			}
 			default: {
