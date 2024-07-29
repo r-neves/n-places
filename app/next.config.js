@@ -10,4 +10,5 @@ module.exports = withPWA({
   // next.js config
   reactStrictMode: false,
   swcMinify: false,
+  staticPageGenerationTimeout: 120,
 });
