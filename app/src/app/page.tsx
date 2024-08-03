@@ -1,6 +1,6 @@
 import Image from "next/image";
 import styles from "./page.module.css";
-import { MapComponent } from "./ui/Map";
+import { MapComponent } from "../components/Map";
 import { RestaurantsService, RestaurantsImpl } from "@/lib/places/service";
 import { NotionAPIRestaurantsRepository } from "@/lib/places/repository/notion-api";
 import { use, useEffect } from "react";

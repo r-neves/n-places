@@ -1,11 +1,10 @@
 "use client";
 
 import styles from "./map.module.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Map as MapGL, GeolocateControl, Popup } from "maplibre-gl";
-import { pulsingDot } from "./pulsing-dot";
 import { regularDot } from "./regular-dot";
-import { PlaceItem } from "../lib/services/places-storage/notion-integration";
+import { PlaceItem } from "../app/lib/services/places-storage/notion-integration";
 import { Restaurant } from "@/lib/places/domain/restaurant";
 
 interface MapComponentProps {
