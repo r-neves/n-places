@@ -1,11 +1,12 @@
 "use client";
 
 import styles from "./map.module.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Map as MapGL, GeolocateControl, Popup } from "maplibre-gl";
 import { pulsingDot } from "./pulsing-dot";
 import { regularDot } from "./regular-dot";
 import { PlaceItem } from "../lib/services/places-storage/notion-integration";
+import { Restaurant } from "@/lib/places/domain/restaurant";
 
 interface MapComponentProps {
 	dataPoints: PlaceItem[];
@@ -20,10 +21,6 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 	}
 
 	function addGeolocationControl() {
-		// navigator.geolocation.getCurrentPosition((position) => {
-		// 	console.log("Geolocation", position);
-		// });
-
 		map.current?.addControl(
 			new GeolocateControl({
 				positionOptions: {
@@ -35,12 +32,12 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 		);
 	}
 
-	function setSourceData() {
+	function setSourceData(restaurants: Restaurant[]) {
 		map.current?.addSource("points", {
 			type: "geojson",
 			data: {
 				type: "FeatureCollection",
-				features: dataPoints.map((entry) => ({
+				features: restaurants.map((entry) => ({
 					type: "Feature",
 					geometry: {
 						type: "Point",
@@ -100,27 +97,31 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 		// TODO on click and stuff
 	}
 
-	async function handleMapLoad(loadImgsPromise: Promise<void>) {
+	async function handleMapLoad(loadImgsPromise: Promise<void>, restaurants: Restaurant[]) {
 		await loadImgsPromise;
 		addGeolocationControl();
-		setSourceData();
+		setSourceData(restaurants);
 		addLayers();
 		addEventListeners();
 		console.log("Map loaded");
 	}
 
 	useEffect(() => {
-		map.current = new MapGL({
-			container: "mapElem",
-			style: "./map-style.json",
-			center: [-9.10595458097556, 38.77395075041862],
-			zoom: 10,
+		fetch("/api/restaurants").
+		then((response) => response.json()).
+		then((data) => {
+			map.current = new MapGL({
+				container: "mapElem",
+				style: "./map-style.json",
+				center: [-9.10595458097556, 38.77395075041862],
+				zoom: 10,
+			});
+			const loadPromise = loadImages();
+			map.current.on("load", () => {
+				handleMapLoad(loadPromise, data);
+			});
 		});
-		const loadPromise = loadImages();
-		map.current.on("load", () => {
-			handleMapLoad(loadPromise);
-		});
-	}, [dataPoints]);
+	}, []);
 
 	return <div id="mapElem" className={styles.mapElem} />;
 }
