@@ -4,11 +4,10 @@ import styles from "./map.module.css";
 import { useEffect, useRef } from "react";
 import { Map as MapGL, GeolocateControl, Popup } from "maplibre-gl";
 import { regularDot } from "./regular-dot";
-import { PlaceItem } from "../app/lib/services/places-storage/notion-integration";
 import { Restaurant } from "@/lib/places/domain/restaurant";
 
 interface MapComponentProps {
-	dataPoints: PlaceItem[];
+	dataPoints: Restaurant[];
 }
 
 export function MapComponent({ dataPoints }: MapComponentProps) {
