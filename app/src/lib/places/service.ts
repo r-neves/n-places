@@ -14,7 +14,7 @@ export class RestaurantsImpl implements RestaurantsService {
     }
 
     async getRestaurants(databaseID: string): Promise<Restaurant[]> {
-        return this.repository.getDBEntries(databaseID);
+        return this.repository.getRestaurants(databaseID);
     }
 
     async getDBLastUpdatedDate(databaseID: string): Promise<Date> {

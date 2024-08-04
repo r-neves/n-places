@@ -40,7 +40,10 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 					type: "Feature",
 					geometry: {
 						type: "Point",
-						coordinates: [Number(entry.longitude), Number(entry.latitude)],
+						coordinates: [
+							Number(entry.metadata.coordinates.longitude), 
+							Number(entry.metadata.coordinates.latitude)
+						],
 					},
 					properties: {
 						name: entry.name,
@@ -108,7 +111,7 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 	useEffect(() => {
 		fetch("/api/restaurants").
 		then((response) => response.json()).
-		then((data) => {
+		then((data: Restaurant[]) => {
 			map.current = new MapGL({
 				container: "mapElem",
 				style: "./map-style.json",

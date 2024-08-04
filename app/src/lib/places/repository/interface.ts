@@ -1,17 +1,22 @@
 export interface RepoRestaurant {
+	id: string;
 	name: string;
 	mapsUrl: string;
-	longitude: number;
-	latitude: number;
 	visited: boolean;
 	rating: string;
 	dishPrice: string;
 	ambience: { tag: string; color: string }[];
 	tags: { tag: string; color: string }[];
 	textValues: { label: string; value: string }[];
+	metadata: RepoRestaurantMetadata;
+	hasFaultyMetadata: boolean;
+}
+
+export interface RepoRestaurantMetadata {
+	coordinates: { latitude: number; longitude: number };
 }
 
 export interface RestaurantsRepository {
-    getDBEntries(databaseID: string): Promise<RepoRestaurant[]>;
+    getRestaurants(databaseID: string): Promise<RepoRestaurant[]>;
     getDBLastUpdatedDate(databaseID: string): Promise<Date>;
 }

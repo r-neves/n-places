@@ -1,5 +1,5 @@
 import { parse } from "node-html-parser";
-import { RepoRestaurant, RestaurantsRepository } from "./interface";
+import { RepoRestaurant, RepoRestaurantMetadata, RestaurantsRepository } from "./interface";
 
 const NOTION_API_URL = "https://api.notion.com/v1";
 
@@ -9,6 +9,7 @@ const visitedLabel = "rating";
 const typeLabel = "type";
 const priceLabel = "dish price";
 const ambienceLabel = "ambience";
+const metadataLabel = "metadata";
 
 const notVisitedValue = "not visited";
 
@@ -39,8 +40,8 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 			});
 	}
 	
-	async getDBEntries(databaseID: string): Promise<RepoRestaurant[]> {
-		const placeItems: RepoRestaurant[] = [];
+	async getRestaurants(databaseID: string): Promise<RepoRestaurant[]> {
+		const restaurants: RepoRestaurant[] = [];
 	
 		let res = await fetch(`${NOTION_API_URL}/databases/${databaseID}/query`, {
 			method: "POST",
@@ -53,7 +54,7 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 		console.log(`Received response from Notion ${res.results.length}`);
 	
 		res.results.map((entry: any) => {
-			placeItems.push(this.jsonEntryToPlaceItem(entry));
+			restaurants.push(this.jsonEntryToPlaceItem(entry));
 		});
 	
 		while (res.has_more) {
@@ -72,40 +73,56 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 			console.log(`Received response from Notion ${res.results.length}`);
 	
 			res.results.map((entry: any) => {
-				placeItems.push(this.jsonEntryToPlaceItem(entry));
+				restaurants.push(this.jsonEntryToPlaceItem(entry));
 			});
 		}
 	
-		const coordinatePromises: Promise<{ latitude: number; longitude: number }>[] =
+		const coordinatePromises: Promise<{ index: number; latitude: number; longitude: number }>[] =
 			[];
-		for (let i = 0; i < placeItems.length; i++) {
-			coordinatePromises.push(this.getCoordinatesFromMapsUrl(placeItems[i].mapsUrl));
+		for (let i = 0; i < restaurants.length; i++) {
+			if (restaurants[i].hasFaultyMetadata) {
+				coordinatePromises.push(this.getCoordinatesFromMapsUrl(i, restaurants[i].mapsUrl));
+			}
 		}
+
+		const rowMetadataUpdatePromises: Promise<void>[] = [];
 	
 		await Promise.all(coordinatePromises).then((coordinates) => {
-			for (let i = 0; i < placeItems.length; i++) {
-				placeItems[i].latitude = coordinates[i].latitude;
-				placeItems[i].longitude = coordinates[i].longitude;
-			}
+			coordinates.forEach(c => {
+				const metadata: RepoRestaurantMetadata = {
+					coordinates: {
+						latitude: c.latitude,
+						longitude: c.longitude,
+					},
+				};
+
+				rowMetadataUpdatePromises.push(
+					this.updateRowMetadata(restaurants[c.index].id, metadata)
+				);
+				restaurants[c.index].metadata = metadata;
+			});
 		});
+
+		await Promise.all(rowMetadataUpdatePromises);
 	
 		console.log("Finished getting coordinates");
 	
-		return placeItems;
+		return restaurants;
 	}
 	
 	jsonEntryToPlaceItem(entry: any): RepoRestaurant {
 		const newPlace: RepoRestaurant = {
+			id: entry.id,
 			name: "",
 			mapsUrl: "",
 			visited: false,
 			rating: "",
-			longitude: 0,
-			latitude: 0,
 			dishPrice: "",
 			ambience: [],
 			tags: [],
 			textValues: [],
+			metadata: { coordinates: { latitude: 0, longitude: 0 } },
+			hasFaultyMetadata: false,
 		};
 	
 		Object.keys(entry.properties).forEach((key, _) => {
@@ -166,6 +183,15 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 	
 					break;
 				}
+				case metadataLabel: {
+					try {
+						newPlace.metadata = this.tryParseMetadataField(entry.properties[key].rich_text);
+					} catch (e) {
+						newPlace.hasFaultyMetadata = true;
+					}
+					
+					break;
+				}
 				default: {
 					if (Object.keys(entry.properties[key].rich_text).length > 0) {
 						newPlace.textValues.push({
@@ -182,8 +208,9 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 	}
 	
 	async getCoordinatesFromMapsUrl(
+		index: number,
 		mapsUrl: string,
-	): Promise<{ latitude: number; longitude: number }> {
+	): Promise<{ index: number; latitude: number; longitude: number }> {
 		return await fetch(mapsUrl)
 			.then((response) => response.text())
 			.then((text) => {
@@ -195,10 +222,60 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 					.substring(coordinatesBeginIndex, coordinatesBeginIndex + 30)
 					.split(",");
 				return {
+					index: index,
 					latitude: parseFloat(includedCoordinates[0]),
 					longitude: parseFloat(includedCoordinates[1]),
 				};
 			});
 	}
 	
+	tryParseMetadataField(metadataField: any[]): RepoRestaurantMetadata {
+		if (Object.keys(metadataField).length <= 0) {
+			throw new Error("Metadata field is empty");
+		}
+
+		try {
+			const value: string = metadataField[0].text.content;
+			const parsedMetadata = JSON.parse(value);
+
+			return {
+				coordinates: {
+					latitude: parsedMetadata.coordinates.latitude,
+					longitude: parsedMetadata.coordinates.longitude,
+				}
+			}
+		} catch (e) {
+			throw new Error("Metadata field is not a valid JSON");
+		}
+	}
+
+	async updateRowMetadata(
+		restaurantID: string,
+		metadata: RepoRestaurantMetadata
+	): Promise<void> {
+		const metadataString = JSON.stringify(metadata);
+
+		await fetch(`${NOTION_API_URL}/pages/${restaurantID}`, {
+			method: "PATCH",
+			headers: {
+				Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+				"Notion-Version": `${process.env.NOTION_API_VERSION}`,
+				"Content-type": "application/json",
+			},
+			body: JSON.stringify({
+				properties: {
+					Metadata: {
+						rich_text: [
+							{
+								type: "text",
+								text: {
+									content: metadataString,
+								}
+							}
+						]
+					},
+				},
+			}),
+		});
+	}
 }

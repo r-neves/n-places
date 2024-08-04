@@ -7,12 +7,12 @@ export async function GET() {
     const restaurantService: RestaurantsService = 
 		new RestaurantsImpl(new NotionAPIRestaurantsRepository(restaurantDatabaseID));
 
-	const [date, dbEntries] = await Promise.all([
+	const [date, restaurants] = await Promise.all([
 		restaurantService.getDBLastUpdatedDate(restaurantDatabaseID),
 		restaurantService.getRestaurants(restaurantDatabaseID),
 	]);
 
     console.log("DB last updated date", date);
 
-    return Response.json(dbEntries);
+    return Response.json(restaurants);
 }
