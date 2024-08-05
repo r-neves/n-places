@@ -108,9 +108,15 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 	}
 
 	useEffect(() => {
-		fetch("/api/restaurants").
-		then((response) => response.json()).
-		then((data: Restaurant[]) => {
+		const fetchDataAndLoadMap = async () => {
+			const lastModifiedDate = await fetch("/api/restaurants/lastUpdated", {cache: "no-store"})
+			.then((response) => response.json());
+
+			const restaurants = await fetch(`/api/restaurants?lastModifiedDate=${lastModifiedDate}`,
+				{cache: "force-cache"}
+			)
+			.then((response) => response.json());
+
 			map.current = new MapGL({
 				container: "mapElem",
 				style: "./map-style.json",
@@ -119,9 +125,11 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 			});
 			const loadPromise = loadImages();
 			map.current.on("load", () => {
-				handleMapLoad(loadPromise, data);
+				handleMapLoad(loadPromise, restaurants);
 			});
-		});
+		}
+
+		fetchDataAndLoadMap();
 	}, []);
 
 	return <div id="mapElem" className={styles.mapElem} />;

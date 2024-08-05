@@ -16,34 +16,46 @@ const notVisitedValue = "not visited";
 export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 	_databaseID: string;
 
-	constructor(databaseID: string) {
-		this._databaseID = databaseID;
+	constructor() {
+		this._databaseID = process.env.RESTAURANTS_DB_ID!;
 	}
 
 	async getDBLastUpdatedDate(): Promise<Date> {
-		const res = await fetch(`${NOTION_API_URL}/databases/${this._databaseID}`, {
-			method: "GET",
+		const request = new Request(`${NOTION_API_URL}/databases/${this._databaseID}/query`, {
+			cache: "no-store",
+			method: "POST",
 			headers: {
-				Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+				"Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
 				"Notion-Version": `${process.env.NOTION_API_VERSION}`,
+				"Content-Type": "application/json",
 			},
+			body: JSON.stringify({
+				page_size: 1,
+				sorts: [
+					{
+						timestamp: "last_edited_time",
+						direction: "descending"
+					}
+				]
+			}),
 		});
+
+		const res = await fetch(request);
 	
-		return res
-			.json()
+		return res.json()
 			.then((response) => {
-				return new Date(response.last_edited_time);
+				return response.results[0].last_edited_time;
 			})
 			.catch((error) => {
 				console.log(error);
-				return error;
+				return
 			});
 	}
 	
-	async getRestaurants(databaseID: string): Promise<RepoRestaurant[]> {
+	async getRestaurants(): Promise<RepoRestaurant[]> {
 		const restaurants: RepoRestaurant[] = [];
 	
-		let res = await fetch(`${NOTION_API_URL}/databases/${databaseID}/query`, {
+		let res = await fetch(`${NOTION_API_URL}/databases/${this._databaseID}/query`, {
 			method: "POST",
 			headers: {
 				Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
@@ -58,7 +70,7 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 		});
 	
 		while (res.has_more) {
-			res = await fetch(`${NOTION_API_URL}/databases/${databaseID}/query`, {
+			res = await fetch(`${NOTION_API_URL}/databases/${this._databaseID}/query`, {
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
@@ -97,7 +109,7 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 				};
 
 				rowMetadataUpdatePromises.push(
-					this.updateRowMetadata(restaurants[c.index].id, metadata)
+					this._updateRowMetadata(restaurants[c.index].id, metadata)
 				);
 				restaurants[c.index].metadata = metadata;
 			});
@@ -249,7 +261,7 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 		}
 	}
 
-	async updateRowMetadata(
+	async _updateRowMetadata(
 		restaurantID: string,
 		metadata: RepoRestaurantMetadata
 	): Promise<void> {

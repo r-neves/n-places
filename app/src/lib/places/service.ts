@@ -2,8 +2,8 @@ import { Restaurant } from "./domain/restaurant";
 import { RestaurantsRepository } from "./repository/interface";
 
 export interface RestaurantsService {
-    getRestaurants(databaseID: string): Promise<Restaurant[]>;
-    getDBLastUpdatedDate(databaseID: string): Promise<Date>;
+    getRestaurants(): Promise<Restaurant[]>;
+    getDBLastUpdatedDate(): Promise<Date>;
 }
 
 export class RestaurantsImpl implements RestaurantsService {
@@ -13,11 +13,11 @@ export class RestaurantsImpl implements RestaurantsService {
         this.repository = repository;
     }
 
-    async getRestaurants(databaseID: string): Promise<Restaurant[]> {
-        return this.repository.getRestaurants(databaseID);
+    async getRestaurants(): Promise<Restaurant[]> {
+        return this.repository.getRestaurants();
     }
 
-    async getDBLastUpdatedDate(databaseID: string): Promise<Date> {
-        return this.repository.getDBLastUpdatedDate(databaseID);
+    async getDBLastUpdatedDate(): Promise<Date> {
+        return this.repository.getDBLastUpdatedDate();
     }
 }
