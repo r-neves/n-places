@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { Map as MapGL, GeolocateControl, Popup } from "maplibre-gl";
 import { regularDot } from "./regular-dot";
 import { Restaurant } from "@/lib/places/domain/restaurant";
+import { IMAGE_SIZE, SvgIcons } from "./SvgIcons";
 
 interface MapComponentProps {
 	dataPoints: Restaurant[];
@@ -14,7 +15,14 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 	const map = useRef<MapGL>();
 
 	async function loadImages() {
-		// biome-ignore lint/style/noNonNullAssertion:
+		SvgIcons.forEach((svgIcon) => {
+			// The source image will be double the size of the target icon to improve quality
+			const size = IMAGE_SIZE * 2;
+			const iconImage = new Image(size, size);
+			iconImage.onload = () => map.current?.addImage(svgIcon.id, iconImage)
+			iconImage.src = svgIcon.image.src;
+		});
+
 		map.current?.addImage("regular-dot", regularDot(map.current!));
 	}
 
@@ -59,8 +67,28 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 			type: "symbol",
 			source: "points",
 			layout: {
-				"icon-image": "regular-dot",
+				"icon-image": "restaurant",
 				"icon-allow-overlap": true,
+				"icon-size": 0.5,
+				"icon-overlap": "always",
+			},
+		});
+
+		map.current?.addLayer({
+			id: "points-name",
+			type: "symbol",
+			source: "points",
+			layout: {
+				"text-field": ["format", ["get", "name"], {}, "\n", ["get", "rating"]],
+				"text-size": 12,
+				"text-offset": [1.3, 0.0],
+				"text-anchor": "left",
+				"text-font": ["Inter"],
+				"text-justify": "left",
+				"visibility": "none", // Initially hidden
+			},
+			paint: {
+				"text-color": "#C94079",
 			},
 		});
 	}
@@ -87,15 +115,27 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 
             map.current?.flyTo({
                 center: coordinates,
-				speed: 0.5,
+				speed: 0.8,
+				zoom: 15,
             });
-			new Popup()
-                .setLngLat(coordinates)
-                .setHTML(`<p style="color: black">${e.features[0].properties.name}</p><p style="color: black">${e.features[0].properties.rating}</p>`)
-                .addTo(map.current);
+			// new Popup()
+            //     .setLngLat(coordinates)
+            //     .setHTML(`<p style="color: black">${e.features[0].properties.name}</p><p style="color: black">${e.features[0].properties.rating}</p>`)
+            //     .addTo(map.current);
         });
 
 		// TODO on click and stuff
+	}
+
+	function addZoomEventListener() {
+		map.current?.on('zoom', () => {
+			const zoom = map.current?.getZoom();
+			if (zoom && zoom >= 10) {
+				map.current?.setLayoutProperty('points-name', 'visibility', 'visible');
+			} else {
+				map.current?.setLayoutProperty('points-name', 'visibility', 'none');
+			}
+		});
 	}
 
 	async function handleMapLoad(loadImgsPromise: Promise<void>, restaurants: Restaurant[]) {
@@ -104,6 +144,7 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 		setSourceData(restaurants);
 		addLayers();
 		addEventListeners();
+		addZoomEventListener();
 		console.log("Map loaded");
 	}
 
