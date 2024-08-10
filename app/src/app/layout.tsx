@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-	title: "Notion Places",
+	title: "N Places",
 	description: "See your saved places on the map!",
 };
 

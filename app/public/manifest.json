@@ -1,6 +1,6 @@
 {
-  "name": "Notion Places",
-  "short_name": "Notion Places",
+  "name": "N Places",
+  "short_name": "N Places",
   "description": "An app to see places you keep on your Notion account",
   "start_url": "/",
   "display": "standalone",
