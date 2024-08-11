@@ -1,10 +1,25 @@
 .main {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 6rem;
+  padding: 1rem;
   min-height: 100vh;
+  background-color: #fac3b8;
+  color: #333333;;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #333333;
+  height: 100vh;
+}
+
+.loading * {
+  text-align: center;
 }
 
 .description {

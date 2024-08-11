@@ -11,7 +11,7 @@ interface MapComponentProps {
 	dataPoints: Restaurant[];
 }
 
-export function MapComponent({ dataPoints }: MapComponentProps) {
+export default function MapComponent({ dataPoints }: MapComponentProps) {
 	const map = useRef<MapGL>();
 
 	async function loadImages() {
