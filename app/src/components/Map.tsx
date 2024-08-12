@@ -2,28 +2,25 @@
 
 import styles from "./map.module.css";
 import { useEffect, useRef } from "react";
-import { Map as MapGL, GeolocateControl, Popup } from "maplibre-gl";
-import { regularDot } from "./regular-dot";
+import { Map as MapGL, GeolocateControl, MapMouseEvent, MapGeoJSONFeature, Popup } from "maplibre-gl";
 import { Restaurant } from "@/lib/places/domain/restaurant";
-import { IMAGE_SIZE, SvgIcons } from "./SvgIcons";
+import { IMAGE_SIZE, RestaurantItems, splitRestaurantsByTag } from "./restaurant-items";
 
 interface MapComponentProps {
 	dataPoints: Restaurant[];
 }
 
-export function MapComponent({ dataPoints }: MapComponentProps) {
+export default function MapComponent({ dataPoints }: MapComponentProps) {
 	const map = useRef<MapGL>();
 
 	async function loadImages() {
-		SvgIcons.forEach((svgIcon) => {
+		Object.values(RestaurantItems).forEach((item) => {
 			// The source image will be double the size of the target icon to improve quality
 			const size = IMAGE_SIZE * 2;
 			const iconImage = new Image(size, size);
-			iconImage.onload = () => map.current?.addImage(svgIcon.id, iconImage)
-			iconImage.src = svgIcon.image.src;
+			iconImage.onload = () => map.current?.addImage(item.id, iconImage)
+			iconImage.src = item.image.src;
 		});
-
-		map.current?.addImage("regular-dot", regularDot(map.current!));
 	}
 
 	function addGeolocationControl() {
@@ -39,62 +36,73 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 	}
 
 	function setSourceData(restaurants: Restaurant[]) {
-		map.current?.addSource("points", {
-			type: "geojson",
-			data: {
-				type: "FeatureCollection",
-				features: restaurants.map((entry) => ({
-					type: "Feature",
-					geometry: {
-						type: "Point",
-						coordinates: [
-							Number(entry.metadata.coordinates.longitude), 
-							Number(entry.metadata.coordinates.latitude)
-						],
-					},
-					properties: {
-						name: entry.name,
-						rating: entry.rating,
-					}
-				})),
-			},
-		});
+		const restaurantsByTag = splitRestaurantsByTag(restaurants);
+
+		for (const tag in restaurantsByTag) {
+			map.current?.addSource(tag, {
+				type: "geojson",
+				data: {
+					type: "FeatureCollection",
+					features: restaurantsByTag[tag].map((entry) => ({
+						type: "Feature",
+						geometry: {
+							type: "Point",
+							coordinates: [
+								Number(entry.metadata.coordinates.longitude), 
+								Number(entry.metadata.coordinates.latitude)
+							],
+						},
+						properties: {
+							name: entry.name,
+							rating: entry.rating,
+							mapsUrl: entry.mapsUrl,
+						}
+					})),
+				},
+			});
+		}
 	}
 
 	function addLayers() {
-		map.current?.addLayer({
-			id: "points",
-			type: "symbol",
-			source: "points",
-			layout: {
-				"icon-image": "restaurant",
-				"icon-allow-overlap": true,
-				"icon-size": 0.5,
-				"icon-overlap": "always",
-			},
-		});
+		for (const tag in RestaurantItems) {
+			map.current?.addLayer({
+				id: tag,
+				type: "symbol",
+				source: tag,
+				layout: {
+					"icon-image": tag,
+					"icon-allow-overlap": true,
+					"icon-size": 0.5,
+					"icon-overlap": "always",
+				},
+			});
+		}
 
-		map.current?.addLayer({
-			id: "points-name",
-			type: "symbol",
-			source: "points",
-			layout: {
-				"text-field": ["format", ["get", "name"], {}, "\n", ["get", "rating"]],
-				"text-size": 12,
-				"text-offset": [1.3, 0.0],
-				"text-anchor": "left",
-				"text-font": ["Inter"],
-				"text-justify": "left",
-				"visibility": "none", // Initially hidden
-			},
-			paint: {
-				"text-color": "#C94079",
-			},
-		});
+		for (const tag in RestaurantItems) {
+			map.current?.addLayer({
+				id: `${tag}-name`,
+				type: "symbol",
+				source: tag,
+				layout: {
+					"text-field": ["format", ["get", "name"], {}, "\n", ["get", "rating"]],
+					"text-size": 14,
+					"text-offset": [1.3, 0.0],
+					"text-anchor": "left",
+					"text-font": ["Inter"],
+					"text-justify": "left",
+					"visibility": "none", // Initially hidden
+				},
+				paint: {
+					"text-color": RestaurantItems[tag].textColor,
+				},
+			});
+		}
 	}
 
 	function addEventListeners() {
-		map.current?.on('click', 'points', (e) => {
+		const onClickHandler = (e: MapMouseEvent & {
+			features?: MapGeoJSONFeature[];
+		} & Object) => {
 			if (!map.current) {
 				console.log("Map not loaded on point click");
 				return;
@@ -118,22 +126,30 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 				speed: 0.8,
 				zoom: 15,
             });
-			// new Popup()
-            //     .setLngLat(coordinates)
-            //     .setHTML(`<p style="color: black">${e.features[0].properties.name}</p><p style="color: black">${e.features[0].properties.rating}</p>`)
-            //     .addTo(map.current);
-        });
 
-		// TODO on click and stuff
+			const properties = e.features[0].properties;
+			new Popup()
+				.setLngLat(coordinates)
+				.setHTML(`<a style="text-decoration: underline; color: blue" href="${properties.mapsUrl}">Google Maps Link</a>`)
+				.addTo(map.current);
+		}
+
+		for (const tag in RestaurantItems) {
+			map.current?.on('click', tag, onClickHandler);
+		}
 	}
 
 	function addZoomEventListener() {
 		map.current?.on('zoom', () => {
 			const zoom = map.current?.getZoom();
 			if (zoom && zoom >= 10) {
-				map.current?.setLayoutProperty('points-name', 'visibility', 'visible');
+				for (const tag in RestaurantItems) {
+					map.current?.setLayoutProperty(`${tag}-name`, 'visibility', 'visible');
+				}
 			} else {
-				map.current?.setLayoutProperty('points-name', 'visibility', 'none');
+				for (const tag in RestaurantItems) {
+					map.current?.setLayoutProperty(`${tag}-name`, 'visibility', 'none');
+				}
 			}
 		});
 	}
@@ -153,9 +169,7 @@ export function MapComponent({ dataPoints }: MapComponentProps) {
 			const lastModifiedDate = await fetch("/api/restaurants/lastUpdated", {cache: "no-store"})
 			.then((response) => response.json());
 
-			const restaurants = await fetch(`/api/restaurants?lastModifiedDate=${lastModifiedDate}`,
-				{cache: "force-cache"}
-			)
+			const restaurants = await fetch(`/api/restaurants?lastModifiedDate=${lastModifiedDate}`, {cache: "force-cache"})
 			.then((response) => response.json());
 
 			map.current = new MapGL({
