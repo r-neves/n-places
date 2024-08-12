@@ -14,9 +14,13 @@ const loadingPhrases = [
 ];
 
 export default function Loading() {
-    const [currentPhrase, setCurrentPhrase] = useState(loadingPhrases[0]);
+    const [currentPhrase, setCurrentPhrase] = useState("");
 
     useEffect(() => {
+        // Set a random initial phrase after the component mounts
+        const randomIndex = Math.floor(Math.random() * loadingPhrases.length);
+        setCurrentPhrase(loadingPhrases[randomIndex]);
+
         const interval = setInterval(() => {
             setCurrentPhrase((prevPhrase) => {
                 const currentIndex = loadingPhrases.indexOf(prevPhrase);
