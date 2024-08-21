@@ -17,6 +17,6 @@ export interface RepoRestaurantMetadata {
 }
 
 export interface RestaurantsRepository {
-    getRestaurants(): Promise<RepoRestaurant[]>;
+    getRestaurants(lastModifiedDate: Date): Promise<RepoRestaurant[]>;
     getDBLastUpdatedDate(): Promise<Date>;
 }

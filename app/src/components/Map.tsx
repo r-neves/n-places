@@ -104,18 +104,18 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
 			features?: MapGeoJSONFeature[];
 		} & Object) => {
 			if (!map.current) {
-				console.log("Map not loaded on point click");
+				console.error("Map not loaded on point click");
 				return;
 			}
 
 			if (!e.features) {
-				console.log("No features on map point click");
+				console.error("No features on map point click");
 				return;
 			}
 
 			const geometry = e.features[0].geometry;
 			if (!geometry.type || geometry.type !== "Point") {
-				console.log("No geometry on point click");
+				console.error("No geometry on point click");
 				return;
 			}
 
@@ -161,7 +161,7 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
 		addLayers();
 		addEventListeners();
 		addZoomEventListener();
-		console.log("Map loaded");
+		console.debug("Map loaded");
 	}
 
 	useEffect(() => {
@@ -171,6 +171,8 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
 
 			const restaurants = await fetch(`/api/restaurants?lastModifiedDate=${lastModifiedDate}`, {cache: "force-cache"})
 			.then((response) => response.json());
+
+			console.info("Received restaurants from Notion: %d", restaurants.length);
 
 			map.current = new MapGL({
 				container: "mapElem",

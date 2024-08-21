@@ -129,7 +129,7 @@ export function splitRestaurantsByTag(restaurants: Restaurant[]): { [tag: string
         } else {
             const mainTag = restaurant.tags[0].tag.toLocaleLowerCase();
             if (result[mainTag] === undefined) {
-                console.log(restaurant.tags[0].tag);
+                console.info("Tag not found: %s", restaurant.tags[0].tag);
                 result["restaurant"].push(restaurant);
             } else {
                 result[mainTag].push(restaurant);
