@@ -3,8 +3,6 @@ import { RepoRestaurant, RepoRestaurantMetadata } from "../interface";
 
 const NOTION_API_URL = "https://api.notion.com/v1";
 
-const cache = new NodeCache({ stdTTL: 60 * 60 * 24 * 7 }); // 1 week 
-
 interface POSTBody{
     filter?: {
         timestamp: string;
@@ -67,7 +65,7 @@ async function fetchDBLastUpdatedDate(databaseID: string): Promise<Date> {
 }
 
 async function fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date): Promise<RepoRestaurant[]> {
-    const cachedValue: CacheValue | undefined = cache.get(databaseID);
+    const cachedValue: CacheValue | undefined = global.placesCache.get(databaseID);
     
     if (cachedValue === undefined) {
         console.debug("Cache not found for database %s, fetching all results", databaseID);
@@ -82,7 +80,7 @@ async function fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date)
             newCacheValue.restaurants.set(restaurant.id, restaurant);
         });
 
-        cache.set(databaseID, newCacheValue);
+        global.placesCache.set(databaseID, newCacheValue);
 
         return results;
     }
@@ -104,7 +102,7 @@ async function fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date)
     });
     cachedValue.lastUpdated = lastModifiedDate;
 
-    cache.set(databaseID, cachedValue);
+    global.placesCache.set(databaseID, cachedValue);
 
     return Array.from(cachedValue.restaurants.values());
 }
@@ -135,13 +133,13 @@ async function patchPlaceMetadata(databaseID: string, placeID: string, metadata:
         }),
     });
 
-    const cachedValue: CacheValue | undefined = cache.get(databaseID);
+    const cachedValue: CacheValue | undefined = global.placesCache.get(databaseID);
 
     if (cachedValue !== undefined) {
         const restaurant = cachedValue.restaurants.get(placeID);
         if (restaurant !== undefined) {
             restaurant.metadata = metadata;
-            cache.set(databaseID, cachedValue);
+            global.placesCache.set(databaseID, cachedValue);
         }
     }
 }
