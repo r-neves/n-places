@@ -70,6 +70,7 @@ async function fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date)
     const cachedValue: CacheValue | undefined = cache.get(databaseID);
     
     if (cachedValue === undefined) {
+        console.debug("Cache not found for database %s, fetching all results", databaseID);
         const results = await fetchAllResults(databaseID);
 
         const newCacheValue: CacheValue = {
@@ -87,8 +88,13 @@ async function fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date)
     }
 
     if (cachedValue.lastUpdated.toISOString() === lastModifiedDate.toISOString()) {
+        console.debug("Cache found for database %s, returning cached results", databaseID);
         return Array.from(cachedValue.restaurants.values());
     }
+
+    console.debug("Cache found for database %s, but last updated date is different, fetching new results", databaseID);
+    console.debug("Last updated date in cache: %s", cachedValue.lastUpdated.toISOString());
+    console.debug("Last updated date in request: %s", lastModifiedDate.toISOString());
 
     // Fetch only new entries not in the cache
     const newEntries = await fetchAllResults(databaseID, cachedValue.lastUpdated);
