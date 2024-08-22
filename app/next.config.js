@@ -11,4 +11,7 @@ module.exports = withPWA({
   reactStrictMode: false,
   swcMinify: false,
   staticPageGenerationTimeout: 120,
+  experimental: {
+    instrumentationHook: true,
+  },
 });
