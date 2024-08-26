@@ -1,5 +1,5 @@
-import NodeCache from "node-cache";
 import { RepoRestaurant, RepoRestaurantMetadata } from "../interface";
+import VercelKVCache from "@/lib/cache/vercel-kv";
 
 const NOTION_API_URL = "https://api.notion.com/v1";
 
@@ -14,8 +14,8 @@ interface POSTBody{
 }
 
 interface CacheValue {
-    restaurants: Map<String, RepoRestaurant>;
-    lastUpdated: Date;
+    restaurantMap: Object; // map converted to object to be json serializable
+    lastUpdated: string;
 }
 
 export default class NotionAPIClient {
@@ -65,46 +65,51 @@ async function fetchDBLastUpdatedDate(databaseID: string): Promise<Date> {
 }
 
 async function fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date): Promise<RepoRestaurant[]> {
-    const cachedValue: CacheValue | undefined = global.placesCache.get(databaseID);
+    const cachedValue: CacheValue | undefined = await VercelKVCache.get(databaseID);
     
-    if (cachedValue === undefined) {
+    if (cachedValue === null || cachedValue === undefined) {
         console.debug("Cache not found for database %s, fetching all results", databaseID);
         const results = await fetchAllResults(databaseID);
-
-        const newCacheValue: CacheValue = {
-            restaurants: new Map(),
-            lastUpdated: lastModifiedDate,
-        };
+        const restaurantMap = new Map();
 
         results.forEach((restaurant) => {
-            newCacheValue.restaurants.set(restaurant.id, restaurant);
+            restaurantMap.set(restaurant.id, restaurant);
         });
 
-        global.placesCache.set(databaseID, newCacheValue);
+        const newCacheValue: CacheValue = {
+            restaurantMap: Object.fromEntries(restaurantMap),
+            lastUpdated: lastModifiedDate.toISOString(),
+        };
+
+        await VercelKVCache.set(databaseID, newCacheValue);
 
         return results;
     }
 
-    if (cachedValue.lastUpdated.toISOString() === lastModifiedDate.toISOString()) {
+    if (cachedValue.lastUpdated === lastModifiedDate.toISOString()) {
         console.debug("Cache found for database %s, returning cached results", databaseID);
-        return Array.from(cachedValue.restaurants.values());
+        const restaurantMap = new Map(Object.entries(cachedValue.restaurantMap));
+        return Array.from(restaurantMap.values());
     }
 
     console.debug("Cache found for database %s, but last updated date is different, fetching new results", databaseID);
-    console.debug("Last updated date in cache: %s", cachedValue.lastUpdated.toISOString());
+    console.debug("Last updated date in cache: %s", cachedValue.lastUpdated);
     console.debug("Last updated date in request: %s", lastModifiedDate.toISOString());
 
     // Fetch only new entries not in the cache
-    const newEntries = await fetchAllResults(databaseID, cachedValue.lastUpdated);
+    const newEntries = await fetchAllResults(databaseID, new Date(cachedValue.lastUpdated));
+    const restaurantMap = new Map(Object.entries(cachedValue.restaurantMap));
 
     newEntries.forEach((restaurant) => {
-        cachedValue.restaurants.set(restaurant.id, restaurant);
+        restaurantMap.set(restaurant.id, restaurant);
     });
-    cachedValue.lastUpdated = lastModifiedDate;
+    
+    cachedValue.lastUpdated = lastModifiedDate.toISOString();
+    cachedValue.restaurantMap = Object.fromEntries(restaurantMap);
 
-    global.placesCache.set(databaseID, cachedValue);
+    await VercelKVCache.set(databaseID, cachedValue);
 
-    return Array.from(cachedValue.restaurants.values());
+    return Array.from(restaurantMap.values());
 }
 
 async function patchPlaceMetadata(databaseID: string, placeID: string, metadata: RepoRestaurantMetadata): Promise<void> {
@@ -133,13 +138,15 @@ async function patchPlaceMetadata(databaseID: string, placeID: string, metadata:
         }),
     });
 
-    const cachedValue: CacheValue | undefined = global.placesCache.get(databaseID);
+    const cachedValue: CacheValue | undefined = await VercelKVCache.get(databaseID);
 
     if (cachedValue !== undefined) {
-        const restaurant = cachedValue.restaurants.get(placeID);
+        const restaurantMap = new Map(Object.entries(cachedValue.restaurantMap));
+
+        const restaurant = restaurantMap.get(placeID);
         if (restaurant !== undefined) {
             restaurant.metadata = metadata;
-            global.placesCache.set(databaseID, cachedValue);
+            await VercelKVCache.set(databaseID, cachedValue);
         }
     }
 }
