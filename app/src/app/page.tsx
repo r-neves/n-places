@@ -1,6 +1,6 @@
 import styles from "./page.module.css";
 import {lazy } from "react";
-import Loading from "./loading";
+import Loading from "./loading-map";
 
 const MapComponent = lazy(() => import("../components/Map"));
 

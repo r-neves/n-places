@@ -60,7 +60,7 @@ async function fetchDBLastUpdatedDate(databaseID: string): Promise<Date> {
         })
         .catch((error) => {
             console.error(error);
-            return
+            return Response.error();
         });
 }
 
