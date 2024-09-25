@@ -19,12 +19,12 @@ export function SearchBar({
     searchItems: SearchItem[];
     resetFiltersHandler: () => void;
 }) {
+    const [filteredItems, setFilteredItems] = useState<SearchItem[]>([]);
+    const [inputValue, setInputValue] = useState("");
+
     if (!isMapLoaded) {
         return null;
     }
-
-    const [filteredItems, setFilteredItems] = useState<SearchItem[]>([]);
-    const [inputValue, setInputValue] = useState("");
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setInputValue(e.target.value);
