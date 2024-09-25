@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import styles from "./page.module.css";
-import {useEffect, useState } from "react";
+import styles from "./loading.module.css";
+import { useEffect, useState } from "react";
 import appLogo from "../../public/512px_map_logo_1.jpeg";
 
 const loadingPhrases = [
-	"Seasoning your map...",
-	"Grabbing the best tables...",
-	"Cooking up some delicious directions...",
-	"Just a dash more patience!",
+    "Seasoning your map...",
+    "Grabbing the best tables...",
+    "Cooking up some delicious directions...",
+    "Just a dash more patience!",
     "Plating your spots...",
     "Finding tasty places...",
 ];
 
-export default function Loading() {
+export default function Loading({ isMapLoaded }: { isMapLoaded: boolean }) {
     const [currentPhrase, setCurrentPhrase] = useState("");
 
     useEffect(() => {
@@ -33,9 +33,16 @@ export default function Loading() {
     }, [loadingPhrases]);
 
     return (
-        <main className={styles.loading}>
-            <img src={appLogo.src} alt={"App logo"} width={"90%"} height={"auto"} />
-			<h2>{currentPhrase}</h2>
+        <main
+            className={`${styles.loading} ${isMapLoaded ? styles.hidden : ""}`}
+        >
+            <img
+                src={appLogo.src}
+                alt={"App logo"}
+                width={"90%"}
+                height={"auto"}
+            />
+            <h2>{currentPhrase}</h2>
         </main>
     );
 }

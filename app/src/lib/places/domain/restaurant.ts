@@ -6,7 +6,9 @@ export interface Restaurant {
 	dishPrice: string;
 	ambience: { tag: string; color: string }[];
 	tags: { tag: string; color: string }[];
-	textValues: { label: string; value: string }[];
+	location: string;
+	recommender: string;
+	description: string;
 	metadata: RestaurantMetadata;
 }
 
