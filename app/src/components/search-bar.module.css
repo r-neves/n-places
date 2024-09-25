@@ -1,0 +1,90 @@
+.searchWrapper {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    flex-direction: row;
+    justify-content: start;
+    width: 100%;
+    z-index: 2;
+}
+
+.searchDiv {
+    display: flex;
+    flex-direction: column;
+    width: 90%;
+    max-width: 800px;
+}
+
+.searchSuggestions {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    background-color: white;
+    padding: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border: 0;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 800px;
+    max-height: 70vh;
+    z-index: 2;
+    list-style-type: none;
+    overflow-y: auto;
+}
+
+.searchSuggestions:empty {
+    display: none;
+}
+
+.searchSuggestion {
+    padding: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+.searchBar {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    
+    background-color: white;
+    padding: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border: 0;
+    border-radius: 10px;
+}
+
+.searchBar input {
+    width: 100%;
+    padding: 5px;
+    border: 0;
+    font-size: 16px;
+}
+
+.searchBar input:focus {
+    outline: none;
+}
+
+.searchIcon {
+    margin: 5px;
+    color: #cac9c9;
+}
+
+.resetIcon {
+    margin: 5px;
+    color: #616161;
+}
+
+.itemType {
+    font-size: 14px;
+    color: #cac9c9;
+}
+
+@media (width <= 800px) {
+    .searchWrapper {
+        top: 10px;
+        justify-content: center;
+        left: 0;
+    }
+}

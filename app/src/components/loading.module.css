@@ -1,0 +1,31 @@
+.loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #fac3b8;
+    color: #333333;
+    z-index: 100;
+    transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.loading.hidden {
+    transform: translateX(-100%);
+}
+
+.loading img {
+    max-width: 500px;
+    max-height: 500px;
+    margin-bottom: 20px;
+}
+
+.loading * {
+    text-align: center;
+}

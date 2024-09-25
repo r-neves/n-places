@@ -1,14 +1,14 @@
 "use client";
 
 import styles from "./map.module.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Map as MapGL,
     GeolocateControl,
     MapMouseEvent,
     MapGeoJSONFeature,
     Popup,
-    Marker,
+    SourceSpecification,
 } from "maplibre-gl";
 import { Restaurant } from "@/lib/places/domain/restaurant";
 import {
@@ -16,14 +16,14 @@ import {
     RestaurantItems,
     splitRestaurantsByTag,
 } from "./restaurant-items";
+import { SearchBar, SearchItem } from "./SearchBar";
+import Loading from "@/components/Loading";
+import { capitalize } from "@/lib/util/format";
+import { normalize } from "path";
 
-interface MapComponentProps {
-    dataPoints: Restaurant[];
-}
-
-let markers: Marker[] = [];
-
-export default function MapComponent({ dataPoints }: MapComponentProps) {
+export default function MapComponent() {
+    let [mapLoaded, setMapLoaded] = useState(false);
+    let [searchItems, setSearchItems] = useState<SearchItem[]>([]);
     const map = useRef<MapGL>();
 
     async function loadImages() {
@@ -52,7 +52,7 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
         const restaurantsByTag = splitRestaurantsByTag(restaurants);
 
         for (const tag in restaurantsByTag) {
-            map.current?.addSource(tag, {
+            const sourceSpec: SourceSpecification = {
                 type: "geojson",
                 data: {
                     type: "FeatureCollection",
@@ -70,14 +70,20 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
                             rating: entry.rating,
                             mapsUrl: entry.mapsUrl,
                             dishPrice: entry.dishPrice,
-                            ambience: entry.ambience.map(a => a.tag).join(", "),
+                            ambience: entry.ambience
+                                .map((a) => a.tag)
+                                .join(", "),
                             tags: entry.tags
-                                .map((t) => t.tag)
+                                .map(
+                                    (t: { tag: string; color: string }) => t.tag
+                                )
                                 .join(", "),
                         },
                     })),
                 },
-            });
+            };
+
+            map.current?.addSource(tag, sourceSpec);
         }
     }
 
@@ -124,6 +130,12 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
     }
 
     function addEventListeners() {
+        const queryLayers: string[] = [];
+        for (const tag in RestaurantItems) {
+            queryLayers.push(tag);
+            queryLayers.push(`${tag}-name`);
+        }
+
         const onClickHandler = (
             e: MapMouseEvent & {
                 features?: MapGeoJSONFeature[];
@@ -134,16 +146,16 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
                 return;
             }
 
-			const features = map.current?.queryRenderedFeatures(e.point, {
-				layers: Object.keys(RestaurantItems), // Specify the layers to query
-			});
+            const features = map.current?.queryRenderedFeatures(e.point, {
+                layers: queryLayers, // Specify the layers to query
+            });
 
-			if (!features || features.length === 0) {
-				console.error("No features on map point click");
-				return;
-			}
+            if (!features || features.length === 0) {
+                console.error("No features on map point click");
+                return;
+            }
 
-			const place = features[0];
+            const place = features[0];
 
             const geometry = place.geometry;
             if (!geometry.type || geometry.type !== "Point") {
@@ -179,6 +191,7 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
 
         for (const tag in RestaurantItems) {
             map.current?.on("click", tag, onClickHandler);
+            map.current?.on("click", `${tag}-name`, onClickHandler);
         }
     }
 
@@ -205,6 +218,96 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
         });
     }
 
+    function buildSearchItems(restaurants: Restaurant[]) {
+        const items: SearchItem[] = [];
+
+        for (const tag in RestaurantItems) {
+            const label = capitalize(RestaurantItems[tag].id);
+            items.push({
+                label: label,
+                type: "tag",
+                clickHandler: () => {
+                    for (const t in RestaurantItems) {
+                        map.current?.setFilter(t, [
+                            "in",
+                            tag,
+                            ["downcase", ["get", "tags"]],
+                        ]);
+                        map.current?.setFilter(`${t}-name`, [
+                            "in",
+                            tag,
+                            ["downcase", ["get", "tags"]],
+                        ]);
+                    }
+                },
+            });
+        }
+
+        const places = new Set<string>();
+        const locations = new Set<string>();
+
+        for (const restaurant of restaurants) {
+            if (places.has(restaurant.mapsUrl)) {
+                console.warn(
+                    `Duplicate restaurant name: ${restaurant.mapsUrl}`
+                );
+                continue;
+            }
+
+            places.add(restaurant.mapsUrl);
+
+            items.push({
+                label: restaurant.name,
+                type: "place",
+                clickHandler: () => {
+                    const coordinates = [
+                        restaurant.metadata.coordinates.longitude,
+                        restaurant.metadata.coordinates.latitude,
+                    ] as [number, number];
+
+                    map.current?.flyTo({
+                        center: coordinates,
+                        speed: 0.8,
+                        zoom: 15,
+                    });
+                },
+            });
+
+            const normalizedLocation = normalize(restaurant.location);
+            if (locations.has(normalizedLocation)) {
+                continue;
+            }
+
+            locations.add(normalizedLocation);
+
+            items.push({
+                label: restaurant.location,
+                type: "location",
+                clickHandler: () => {
+                    const coordinates = [
+                        restaurant.metadata.coordinates.longitude,
+                        restaurant.metadata.coordinates.latitude,
+                    ] as [number, number];
+
+                    map.current?.flyTo({
+                        center: coordinates,
+                        speed: 0.8,
+                        zoom: 15,
+                    });
+                },
+            });
+        }
+
+        setSearchItems(items);
+    }
+
+    function resetFilters() {
+        for (const tag in RestaurantItems) {
+            map.current?.setFilter(tag, null);
+            map.current?.setFilter(`${tag}-name`, null);
+        }
+    }
+
     async function handleMapLoad(
         loadImgsPromise: Promise<void>,
         restaurants: Restaurant[]
@@ -215,10 +318,16 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
         addLayers();
         addEventListeners();
         addZoomEventListener();
-        console.debug("Map loaded");
+        buildSearchItems(restaurants);
+        console.info("Map loaded");
+        setMapLoaded(true);
     }
 
     useEffect(() => {
+        if (mapLoaded) {
+            return;
+        }
+
         const fetchDataAndLoadMap = async () => {
             const lastModifiedDate = await fetch(
                 "/api/restaurants/lastUpdated",
@@ -236,11 +345,13 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
             );
 
             map.current = new MapGL({
+                attributionControl: false,
                 container: "mapElem",
                 style: "./map-style.json",
                 center: [-9.10595458097556, 38.77395075041862],
                 zoom: 10,
             });
+
             const loadPromise = loadImages();
             map.current.on("load", () => {
                 handleMapLoad(loadPromise, restaurants);
@@ -248,7 +359,17 @@ export default function MapComponent({ dataPoints }: MapComponentProps) {
         };
 
         fetchDataAndLoadMap();
-    }, []);
+    }, [mapLoaded]);
 
-    return <div id="mapElem" className={styles.mapElem} />;
+    return (
+        <div>
+            <Loading isMapLoaded={mapLoaded} />
+            <SearchBar
+                isMapLoaded={mapLoaded}
+                searchItems={searchItems}
+                resetFiltersHandler={resetFilters}
+            ></SearchBar>
+            <div id="mapElem" className={styles.mapCanvas}></div>
+        </div>
+    );
 }

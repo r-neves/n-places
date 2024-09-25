@@ -218,6 +218,9 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
     const priceLabel = "dish price";
     const ambienceLabel = "ambience";
     const metadataLabel = "metadata";
+    const locationLabel = "location";
+    const recommenderLabel = "recommender";
+    const descriptionLabel = "description";
 
     const notVisitedValue = "not visited";
 
@@ -230,7 +233,9 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
         dishPrice: "",
         ambience: [],
         tags: [],
-        textValues: [],
+        location: "",
+        recommender: "",
+        description: "",
         metadata: { coordinates: { latitude: 0, longitude: 0 } },
         hasFaultyMetadata: false,
     };
@@ -302,13 +307,29 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
                 
                 break;
             }
-            default: {
-                if (Object.keys(entry.properties[key].rich_text).length > 0) {
-                    newPlace.textValues.push({
-                        label: key,
-                        value: entry.properties[key].rich_text[0].text.content,
-                    });
+            case locationLabel: {
+                if (entry.properties[key].rich_text !== null && entry.properties[key].rich_text.length > 0) {
+                    newPlace.location = entry.properties[key].rich_text[0].text.content;
                 }
+
+                break
+            }
+            case recommenderLabel: {
+                if (entry.properties[key].rich_text !== null && entry.properties[key].rich_text.length > 0) {
+                    newPlace.recommender = entry.properties[key].rich_text[0].text.content;
+                }
+
+                break;
+            }
+            case descriptionLabel: {
+                if (entry.properties[key].rich_text !== null && entry.properties[key].rich_text.length > 0) {
+                    newPlace.description = entry.properties[key].rich_text[0].text.content;
+                }
+
+                break;
+            }
+            default: {
+                console.error("Unknown notion property: %s", key);
                 break;
             }
         }
