@@ -6,7 +6,7 @@ import { normalizeString } from "@/lib/util/format";
 
 export interface SearchItem {
     label: string;
-    type: "place" | "tag" | "location";
+    type: "place" | "tag" | "location" | "state";
     clickHandler: () => void;
 }
 
@@ -64,6 +64,8 @@ export function SearchBar({
                 return "Tag";
             case "location":
                 return "Location";
+            case "state":
+                return "State";
         }
     }
 

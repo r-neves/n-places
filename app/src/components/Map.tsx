@@ -67,6 +67,7 @@ export default function MapComponent() {
                         },
                         properties: {
                             name: entry.name,
+                            visited: entry.visited,
                             rating: entry.rating,
                             mapsUrl: entry.mapsUrl,
                             dishPrice: entry.dishPrice,
@@ -100,9 +101,7 @@ export default function MapComponent() {
                     "icon-overlap": "always",
                 },
             });
-        }
 
-        for (const tag in RestaurantItems) {
             map.current?.addLayer({
                 id: `${tag}-name`,
                 type: "symbol",
@@ -198,28 +197,48 @@ export default function MapComponent() {
     function addZoomEventListener() {
         map.current?.on("zoomend", () => {
             const zoom = map.current?.getZoom();
-            if (zoom && zoom >= 10) {
-                for (const tag in RestaurantItems) {
-                    map.current?.setLayoutProperty(
-                        `${tag}-name`,
-                        "visibility",
-                        "visible"
-                    );
-                }
-            } else {
-                for (const tag in RestaurantItems) {
-                    map.current?.setLayoutProperty(
-                        `${tag}-name`,
-                        "visibility",
-                        "none"
-                    );
-                }
+            for (const tag in RestaurantItems) {
+                map.current?.setLayoutProperty(
+                    `${tag}-name`,
+                    "visibility",
+                    zoom && zoom >= 10 ? "visible" : "none"
+                );
             }
         });
     }
 
     function buildSearchItems(restaurants: Restaurant[]) {
         const items: SearchItem[] = [];
+
+        items.push({
+            label: "Visited",
+            type: "state",
+            clickHandler: () => {
+                for (const tag in RestaurantItems) {
+                    map.current?.setFilter(tag, ["==", "visited", true]);
+                    map.current?.setFilter(`${tag}-name`, [
+                        "==",
+                        "visited",
+                        true,
+                    ]);
+                }
+            },
+        });
+
+        items.push({
+            label: "Not Visited",
+            type: "state",
+            clickHandler: () => {
+                for (const tag in RestaurantItems) {
+                    map.current?.setFilter(tag, ["==", "visited", false]);
+                    map.current?.setFilter(`${tag}-name`, [
+                        "==",
+                        "visited",
+                        false,
+                    ]);
+                }
+            },
+        });
 
         for (const tag in RestaurantItems) {
             const label = capitalize(RestaurantItems[tag].id);
