@@ -1,11 +1,11 @@
 {
   "name": "N Places",
   "short_name": "N Places",
-  "description": "An app to see places you keep on your Notion account",
+  "description": "See the places you saved on Notion on a Map!",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FBFBFB",
-  "theme_color": "#000000",
+  "background_color": "#fac3b8",
+  "theme_color": "#fac3b8",
   "orientation": "portrait",
   "icons": [
     {

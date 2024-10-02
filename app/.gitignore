@@ -44,3 +44,7 @@ workbox***.js.map
 
 # env files
 .env
+
+# Serwist
+public/sw*
+public/swe-worker*

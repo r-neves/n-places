@@ -21,7 +21,14 @@ import Loading from "@/components/Loading";
 import { capitalize } from "@/lib/util/format";
 import { normalize } from "path";
 
-export default function MapComponent() {
+const HOME_COORDINATES_LATITUDE = 38.773776659219195;
+const HOME_COORDINATES_LONGITUDE = -9.105364651707808;
+
+export default function MapComponent({
+    version,
+}: {
+    version: string | undefined;
+}) {
     let [mapLoaded, setMapLoaded] = useState(false);
     let [searchItems, setSearchItems] = useState<SearchItem[]>([]);
     const map = useRef<MapGL>();
@@ -86,6 +93,28 @@ export default function MapComponent() {
 
             map.current?.addSource(tag, sourceSpec);
         }
+
+        map.current?.addSource("home", {
+            type: "geojson",
+            data: {
+                type: "FeatureCollection",
+                features: [
+                    {
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [
+                                HOME_COORDINATES_LONGITUDE,
+                                HOME_COORDINATES_LATITUDE,
+                            ],
+                        },
+                        properties: {
+                            name: "Home",
+                        },
+                    },
+                ],
+            },
+        });
     }
 
     function addLayers() {
@@ -126,6 +155,19 @@ export default function MapComponent() {
                 },
             });
         }
+
+        map.current?.addLayer({
+            id: "home",
+            type: "circle",
+            source: "home",
+            layout: {
+                visibility: "visible",
+            },
+            paint: {
+                "circle-radius": 10,
+                "circle-opacity": 0.0,
+            },
+        });
     }
 
     function addEventListeners() {
@@ -135,7 +177,7 @@ export default function MapComponent() {
             queryLayers.push(`${tag}-name`);
         }
 
-        const onClickHandler = (
+        const onPlaceClickHandler = (
             e: MapMouseEvent & {
                 features?: MapGeoJSONFeature[];
             } & Object
@@ -189,9 +231,44 @@ export default function MapComponent() {
         };
 
         for (const tag in RestaurantItems) {
-            map.current?.on("click", tag, onClickHandler);
-            map.current?.on("click", `${tag}-name`, onClickHandler);
+            map.current?.on("click", tag, onPlaceClickHandler);
+            map.current?.on("click", `${tag}-name`, onPlaceClickHandler);
         }
+
+        const onHomeClickHandler = (
+            e: MapMouseEvent & {
+                features?: MapGeoJSONFeature[];
+            } & Object
+        ) => {
+            if (!map.current) {
+                console.error("Map not loaded on home click");
+                return;
+            }
+
+            const features = map.current?.queryRenderedFeatures(e.point, {
+                layers: ["home"],
+            });
+
+            if (!features || features.length === 0) {
+                console.error("No features on map home click");
+                return;
+            }
+
+            new Popup()
+                .setLngLat([
+                    HOME_COORDINATES_LONGITUDE,
+                    HOME_COORDINATES_LATITUDE,
+                ])
+                .setHTML(
+                    `
+                    <h3>Version</h3>
+                    <p>${version}</p>
+                    `
+                )
+                .addTo(map.current);
+        };
+
+        map.current?.on("click", "home", onHomeClickHandler);
     }
 
     function addZoomEventListener() {
