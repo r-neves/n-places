@@ -165,7 +165,7 @@ export default function MapComponent({
             },
             paint: {
                 "circle-radius": 10,
-                "circle-opacity": 0.9,
+                "circle-opacity": 0.0,
             },
         });
     }
