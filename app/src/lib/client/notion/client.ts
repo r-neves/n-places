@@ -1,4 +1,4 @@
-import { RepoRestaurant, RepoRestaurantMetadata } from "../interface";
+import { RepoRestaurant, RepoRestaurantMetadata } from "../../places/repository/interface";
 import VercelKVCache from "@/lib/cache/vercel-kv";
 
 const NOTION_API_URL = "https://api.notion.com/v1";
@@ -19,6 +19,10 @@ interface CacheValue {
 }
 
 export default class NotionAPIClient {
+    static async getUserRole(databaseID: string, email: string): Promise<string> {
+        return getUserRole(databaseID, email);
+    }
+
     static async fetchDBLastUpdatedDate(databaseID: string): Promise<Date> {
         return fetchDBLastUpdatedDate(databaseID);
     }
@@ -30,6 +34,45 @@ export default class NotionAPIClient {
     static async patchPlaceMetadata(databaseID: string, placeID: string, metadata: RepoRestaurantMetadata): Promise<void> {
         return patchPlaceMetadata(databaseID, placeID, metadata);
     }
+}
+
+async function getUserRole(databaseID: string, email: string): Promise<string> {
+    if (email === "") {
+        return "";
+    }
+
+    const request = new Request(`${NOTION_API_URL}/databases/${databaseID}/query`, {
+        cache: "no-store",
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+            "Notion-Version": `${process.env.NOTION_API_VERSION}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            filter: {
+                property: "email",
+                title: {
+                    equals: email
+                }
+            }
+        }),
+    });
+
+    const res = await fetch(request);
+
+    return res.json()
+        .then((response) => {
+            if (response.results.length === 0) {
+                return "";
+            }
+
+            return response.results[0].properties.role.select.name;
+        })
+        .catch((error) => {
+            console.error(error);
+            return Response.error();
+        });
 }
 
 async function fetchDBLastUpdatedDate(databaseID: string): Promise<Date> {

@@ -1,6 +1,6 @@
 import { parse } from "node-html-parser";
 import { RepoRestaurant, RepoRestaurantMetadata, RestaurantsRepository } from "../interface";
-import NotionAPIClient from "./api-client";
+import NotionAPIClient from "../../../client/notion/client";
 
 export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 	constructor() {

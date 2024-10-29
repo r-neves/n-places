@@ -104,6 +104,18 @@ a {
   text-decoration: none;
 }
 
+.admin {
+  background-color: purple;
+}
+
+.editor {
+  background-color: green;
+}
+
+.viewer {
+  background-color: salmon;
+}
+
 /* @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
