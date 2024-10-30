@@ -19,7 +19,10 @@ import {
 import { SearchBar, SearchItem } from "./SearchBar";
 import Loading from "@/components/Loading";
 import { capitalize } from "@/lib/util/format";
+import { UserRole } from "@/lib/util/enums";
 import { normalize } from "path";
+import HiddenPopup from "./HiddenPopup";
+import { useSession } from "next-auth/react";
 
 const HOME_COORDINATES_LATITUDE = 38.773776659219195;
 const HOME_COORDINATES_LONGITUDE = -9.105364651707808;
@@ -31,7 +34,10 @@ export default function MapComponent({
 }) {
     let [mapLoaded, setMapLoaded] = useState(false);
     let [searchItems, setSearchItems] = useState<SearchItem[]>([]);
+    let [isHiddenPopupVisible, setIsHiddenPopupVisible] = useState(false);
+    let [userRole, setUserRole] = useState("");
     const map = useRef<MapGL>();
+    const { data: session, status } = useSession();
 
     async function loadImages() {
         Object.values(RestaurantItems).forEach((item) => {
@@ -81,6 +87,7 @@ export default function MapComponent({
                             ambience: entry.ambience
                                 .map((a) => a.tag)
                                 .join(", "),
+                            recommender: entry.recommender,
                             tags: entry.tags
                                 .map(
                                     (t: { tag: string; color: string }) => t.tag
@@ -213,25 +220,30 @@ export default function MapComponent({
             });
 
             const properties = place.properties;
-            new Popup()
-                .setLngLat(coordinates)
-                .setHTML(
-                    `
+            const googleMapsHTML = `<a style="text-decoration: underline; color: blue" href="${properties.mapsUrl}">Google Maps Link</a>`;
+            let baseHTML = `
 					<h3>${properties.name}</h3>
 					<p>${properties.rating === "" ? "New!" : "Rating: " + properties.rating}</p>
 					${properties.tags ? `<p>Tags: ${properties.tags}</p>` : ""}
 					${properties.dishPrice ? `<p>Dish Price: ${properties.dishPrice}</p>` : ""}
-					${properties.ambience ? `<p>Ambience: ${properties.ambience}</p>` : ""}
-					<a style="text-decoration: underline; color: blue" href="${
-                        properties.mapsUrl
-                    }">Google Maps Link</a>
-					`
-                )
+					${properties.ambience ? `<p>Ambience: ${properties.ambience}</p>` : ""}`;
+
+            if (userRole === UserRole.ADMIN && properties.recommender) {
+                baseHTML += `<p>Recommended by: ${properties.recommender}</p>`;
+            }
+
+            baseHTML += googleMapsHTML;
+
+            new Popup()
+                .setLngLat(coordinates)
+                .setHTML(baseHTML)
                 .addTo(map.current);
         };
 
         for (const tag in RestaurantItems) {
+            map.current?.off("click", tag, onPlaceClickHandler);
             map.current?.on("click", tag, onPlaceClickHandler);
+            map.current?.off("click", `${tag}-name`, onPlaceClickHandler);
             map.current?.on("click", `${tag}-name`, onPlaceClickHandler);
         }
 
@@ -254,18 +266,7 @@ export default function MapComponent({
                 return;
             }
 
-            new Popup()
-                .setLngLat([
-                    HOME_COORDINATES_LONGITUDE,
-                    HOME_COORDINATES_LATITUDE,
-                ])
-                .setHTML(
-                    `
-                    <h3>Version</h3>
-                    <p>${version}</p>
-                    `
-                )
-                .addTo(map.current);
+            setIsHiddenPopupVisible(true);
         };
 
         map.current?.on("click", "home", onHomeClickHandler);
@@ -412,7 +413,6 @@ export default function MapComponent({
         addGeolocationControl();
         setSourceData(restaurants);
         addLayers();
-        addEventListeners();
         addZoomEventListener();
         buildSearchItems(restaurants);
         console.info("Map loaded");
@@ -457,6 +457,27 @@ export default function MapComponent({
         fetchDataAndLoadMap();
     }, [mapLoaded]);
 
+    useEffect(() => {
+        const updateUserRole = async () => {
+            if (!session || !session.user || !session.user.email) {
+                return;
+            }
+
+            const response: string = await fetch("/api/auth/getRole", {
+                method: "POST",
+                body: JSON.stringify({ email: session.user.email }),
+            }).then((response) => response.json());
+
+            setUserRole(response === "" ? UserRole.VIEWER : response);
+        };
+
+        updateUserRole();
+    }, [status]);
+
+    useEffect(() => {
+        addEventListeners();
+    }, [userRole, mapLoaded]);
+
     return (
         <div>
             <Loading isMapLoaded={mapLoaded} />
@@ -466,6 +487,11 @@ export default function MapComponent({
                 resetFiltersHandler={resetFilters}
             ></SearchBar>
             <div id="mapElem" className={styles.mapCanvas}></div>
+            <HiddenPopup
+                isVisible={isHiddenPopupVisible}
+                setIsVisible={setIsHiddenPopupVisible}
+                userRole={userRole}
+            />
         </div>
     );
 }

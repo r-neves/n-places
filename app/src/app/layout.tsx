@@ -3,6 +3,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
+import SessionProvider from "@/components/SessionProvider";
 
 const APP_NAME = "N Places";
 const APP_DEFAULT_TITLE = "N Places";
@@ -66,9 +67,11 @@ export default function RootLayout({
                 />
             </head>
             <body className={inter.className}>
-                {children}
-                <Analytics />
-                <SpeedInsights />
+                <SessionProvider>
+                    {children}
+                    <Analytics />
+                    <SpeedInsights />
+                </SessionProvider>
             </body>
         </html>
     );
