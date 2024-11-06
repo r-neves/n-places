@@ -40,12 +40,17 @@ export default function MapComponent({
     const { data: session, status } = useSession();
 
     async function loadImages() {
+        // The source image will be double the size of the target icon to improve quality
+        const size = IMAGE_SIZE * 2;
         Object.values(RestaurantItems).forEach((item) => {
-            // The source image will be double the size of the target icon to improve quality
-            const size = IMAGE_SIZE * 2;
             const iconImage = new Image(size, size);
             iconImage.onload = () => map.current?.addImage(item.id, iconImage);
             iconImage.src = item.image.src;
+
+            const selectedIconImage = new Image(size, size);
+            selectedIconImage.onload = () =>
+                map.current?.addImage(`${item.id}-selected`, selectedIconImage);
+            selectedIconImage.src = item.selectedImage.src;
         });
     }
 
@@ -79,6 +84,7 @@ export default function MapComponent({
                             ],
                         },
                         properties: {
+                            id: entry.id,
                             name: entry.name,
                             visited: entry.visited,
                             rating: entry.rating,
@@ -136,6 +142,7 @@ export default function MapComponent({
                     "icon-size": 0.5,
                     "icon-overlap": "always",
                 },
+                filter: ["!=", ["get", "id"], ""],
             });
 
             map.current?.addLayer({
@@ -146,9 +153,16 @@ export default function MapComponent({
                     "text-field": [
                         "format",
                         ["get", "name"],
-                        {},
+                        { "text-font": ["literal", ["Inter Medium"]] },
                         "\n",
-                        ["get", "rating"],
+                        ["case", ["==", ["get", "rating"], ""], "New!", ""],
+                        { "text-font": ["literal", ["Inter Italic"]] },
+                        [
+                            "case",
+                            ["!=", ["get", "rating"], ""],
+                            ["get", "rating"],
+                            "",
+                        ],
                     ],
                     "text-size": 14,
                     "text-offset": [1.3, 0.0],
@@ -160,7 +174,60 @@ export default function MapComponent({
                 paint: {
                     "text-color": RestaurantItems[tag].textColor,
                 },
+                filter: ["!=", ["get", "id"], ""],
             });
+
+            map.current?.addLayer(
+                {
+                    id: `${tag}-selected`,
+                    type: "symbol",
+                    source: tag,
+                    layout: {
+                        "icon-image": `${tag}-selected`,
+                        "icon-allow-overlap": true,
+                        "icon-size": 0.5 * 1.3, // Scaled size
+                        "icon-overlap": "always",
+                    },
+                    filter: ["==", ["get", "id"], ""],
+                },
+                `${tag}`
+            );
+
+            map.current?.addLayer(
+                {
+                    id: `${tag}-name-selected`,
+                    type: "symbol",
+                    source: tag,
+                    layout: {
+                        "text-field": [
+                            "format",
+                            ["get", "name"],
+                            { "text-font": ["literal", ["Inter Semi Bold"]] },
+                            "\n",
+                            ["case", ["==", ["get", "rating"], ""], "New!", ""],
+                            { "text-font": ["literal", ["Inter Italic"]] },
+                            [
+                                "case",
+                                ["!=", ["get", "rating"], ""],
+                                ["get", "rating"],
+                                "",
+                            ],
+                        ],
+                        "text-size": 14,
+                        "text-offset": [1.3, 0],
+                        "text-anchor": "left",
+                        "text-font": ["Inter"],
+                        "text-justify": "left",
+                        "text-overlap": "always",
+                        visibility: "visible",
+                    },
+                    paint: {
+                        "text-color": RestaurantItems[tag].selectedTextColor,
+                    },
+                    filter: ["==", ["get", "id"], ""],
+                },
+                `${tag}-name`
+            );
         }
 
         map.current?.addLayer({
@@ -204,6 +271,23 @@ export default function MapComponent({
             }
 
             const place = features[0];
+            const placeId = place.properties.id;
+
+            // Update the selected place
+            for (const layer of queryLayers) {
+                map.current?.setFilter(`${layer}`, [
+                    "!=",
+                    ["get", "id"],
+                    placeId,
+                ]);
+                map.current?.setFilter(`${layer}-selected`, [
+                    "==",
+                    ["get", "id"],
+                    placeId,
+                ]);
+                // TODO figure out why this doesn't work
+                map.current?.moveLayer(`${layer}-selected`, `${layer}`);
+            }
 
             const geometry = place.geometry;
             if (!geometry.type || geometry.type !== "Point") {
@@ -239,6 +323,39 @@ export default function MapComponent({
                 .setHTML(baseHTML)
                 .addTo(map.current);
         };
+
+        const onEmptyClickHandler = (
+            e: MapMouseEvent & {
+                features?: MapGeoJSONFeature[];
+            } & Object
+        ) => {
+            // Query for features at the click point
+            const features = map.current?.queryRenderedFeatures(e.point, {
+                layers: queryLayers,
+            });
+
+            if (!features || !features.length) {
+
+                // Reset filters to show all features in the normal layer
+                for (const tag in RestaurantItems) {
+                    map.current?.setFilter(`${tag}`, null); // Show all features
+                    map.current?.setFilter(`${tag}-name`, null); // Show all features
+                    map.current?.setFilter(`${tag}-selected`, [
+                        "==",
+                        ["get", "id"],
+                        -1,
+                    ]); // No feature matches -1
+                    map.current?.setFilter(`${tag}-name-selected`, [
+                        "==",
+                        ["get", "id"],
+                        -1,
+                    ]); // No feature matches -1
+                }
+            }
+        };
+
+        map.current?.off("click", onEmptyClickHandler);
+        map.current?.on("click", onEmptyClickHandler);
 
         for (const tag in RestaurantItems) {
             map.current?.off("click", tag, onPlaceClickHandler);

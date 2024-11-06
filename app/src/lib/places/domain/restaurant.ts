@@ -1,4 +1,5 @@
 export interface Restaurant {
+	id: string;
     name: string;
 	mapsUrl: string;
 	visited: boolean;
