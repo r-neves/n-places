@@ -21,7 +21,7 @@ import Loading from "@/components/Loading";
 import { capitalize } from "@/lib/util/format";
 import { UserRole } from "@/lib/util/enums";
 import { normalize } from "path";
-import HiddenPopup from "./HiddenPopup";
+import HiddenAdminPopup from "./HiddenAdminPopup";
 import { useSession } from "next-auth/react";
 
 const HOME_COORDINATES_LATITUDE = 38.773776659219195;
@@ -604,7 +604,7 @@ export default function MapComponent({
                 resetFiltersHandler={resetFilters}
             ></SearchBar>
             <div id="mapElem" className={styles.mapCanvas}></div>
-            <HiddenPopup
+            <HiddenAdminPopup
                 isVisible={isHiddenPopupVisible}
                 setIsVisible={setIsHiddenPopupVisible}
                 userRole={userRole}
