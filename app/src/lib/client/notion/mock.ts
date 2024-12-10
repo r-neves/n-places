@@ -1,3 +1,4 @@
+import { UserRole } from "@/lib/util/enums";
 import { RepoRestaurant, RepoRestaurantMetadata } from "../../places/repository/interface";
 
 const mockRestaurants: RepoRestaurant[] = [
@@ -35,7 +36,7 @@ const mockRestaurants: RepoRestaurant[] = [
 
 export default class NotionAPIClient {
     static async getUserRole(_databaseID: string, _email: string): Promise<string> {
-        return "admin";
+        return UserRole.ADMIN;
     }
 
     static async fetchDBLastUpdatedDate(_databaseID: string): Promise<Date> {

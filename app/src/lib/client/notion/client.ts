@@ -1,9 +1,13 @@
-import { RepoRestaurant, RepoRestaurantMetadata } from "../../places/repository/interface";
+import {
+    RepoDatabaseSchema,
+    RepoRestaurant,
+    RepoRestaurantMetadata,
+} from "../../places/repository/interface";
 import VercelKVCache from "@/lib/cache/vercel-kv";
 
 const NOTION_API_URL = "https://api.notion.com/v1";
 
-interface POSTBody{
+interface POSTBody {
     filter?: {
         timestamp: string;
         last_edited_time: {
@@ -19,20 +23,96 @@ interface CacheValue {
 }
 
 export default class NotionAPIClient {
-    static async getUserRole(databaseID: string, email: string): Promise<string> {
+    static async getUserRole(
+        databaseID: string,
+        email: string
+    ): Promise<string> {
         return getUserRole(databaseID, email);
     }
 
-    static async fetchDBLastUpdatedDate(databaseID: string): Promise<Date> {
+    static async getCachedPlace(
+        databaseID: string,
+        placeID: string
+    ): Promise<RepoRestaurant | null> {
+        const cachedValue: CacheValue | undefined = await VercelKVCache.get(
+            databaseID
+        );
+
+        if (cachedValue !== undefined) {
+            const restaurantMap = new Map(
+                Object.entries(cachedValue.restaurantMap)
+            );
+            return restaurantMap.get(placeID);
+        }
+
+        return null;
+    }
+
+    static async getDBLastUpdatedDate(databaseID: string): Promise<Date> {
         return fetchDBLastUpdatedDate(databaseID);
     }
 
-    static async fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date): Promise<RepoRestaurant[]> {
+    static async getPlacesForDBAfterModifiedDate(
+        databaseID: string,
+        lastModifiedDate: Date
+    ): Promise<RepoRestaurant[]> {
         return fetchPlacesFromNotion(databaseID, lastModifiedDate);
     }
 
-    static async patchPlaceMetadata(databaseID: string, placeID: string, metadata: RepoRestaurantMetadata): Promise<void> {
+    static async patchPlaceMetadata(
+        databaseID: string,
+        placeID: string,
+        metadata: RepoRestaurantMetadata
+    ): Promise<void> {
         return patchPlaceMetadata(databaseID, placeID, metadata);
+    }
+
+    static async patchPlaceRating(
+        databaseID: string,
+        placeID: string,
+        propertyID: string,
+        ratingID: string,
+    ): Promise<void> {
+        await fetch(`${NOTION_API_URL}/pages/${placeID}`, {
+            method: "PATCH",
+            headers: {
+                Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+                "Notion-Version": `${process.env.NOTION_API_VERSION}`,
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify({
+                properties: {
+                    Rating: {
+                        id: propertyID,
+                        status: {
+                            id: ratingID,
+                        },
+                    },
+                },
+            }),
+        });
+    }
+
+    static async getDatabaseSchema(
+        databaseID: string
+    ): Promise<RepoDatabaseSchema> {
+        const request = new Request(
+            `${NOTION_API_URL}/databases/${databaseID}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+                    "Notion-Version": `${process.env.NOTION_API_VERSION}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        return await fetch(request)
+            .then((response) => response.json())
+            .catch((error) => {
+                console.error(error);
+                return Response.error();
+            });
     }
 }
 
@@ -41,27 +121,31 @@ async function getUserRole(databaseID: string, email: string): Promise<string> {
         return "";
     }
 
-    const request = new Request(`${NOTION_API_URL}/databases/${databaseID}/query`, {
-        cache: "no-store",
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
-            "Notion-Version": `${process.env.NOTION_API_VERSION}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            filter: {
-                property: "email",
-                title: {
-                    equals: email
-                }
-            }
-        }),
-    });
+    const request = new Request(
+        `${NOTION_API_URL}/databases/${databaseID}/query`,
+        {
+            cache: "no-store",
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+                "Notion-Version": `${process.env.NOTION_API_VERSION}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                filter: {
+                    property: "email",
+                    title: {
+                        equals: email,
+                    },
+                },
+            }),
+        }
+    );
 
     const res = await fetch(request);
 
-    return res.json()
+    return res
+        .json()
         .then((response) => {
             if (response.results.length === 0) {
                 return "";
@@ -76,28 +160,32 @@ async function getUserRole(databaseID: string, email: string): Promise<string> {
 }
 
 async function fetchDBLastUpdatedDate(databaseID: string): Promise<Date> {
-    const request = new Request(`${NOTION_API_URL}/databases/${databaseID}/query`, {
-        cache: "no-store",
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
-            "Notion-Version": `${process.env.NOTION_API_VERSION}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            page_size: 1,
-            sorts: [
-                {
-                    timestamp: "last_edited_time",
-                    direction: "descending"
-                }
-            ]
-        }),
-    });
+    const request = new Request(
+        `${NOTION_API_URL}/databases/${databaseID}/query`,
+        {
+            cache: "no-store",
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+                "Notion-Version": `${process.env.NOTION_API_VERSION}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                page_size: 1,
+                sorts: [
+                    {
+                        timestamp: "last_edited_time",
+                        direction: "descending",
+                    },
+                ],
+            }),
+        }
+    );
 
     const res = await fetch(request);
 
-    return res.json()
+    return res
+        .json()
         .then((response) => {
             return response.results[0].last_edited_time;
         })
@@ -107,11 +195,19 @@ async function fetchDBLastUpdatedDate(databaseID: string): Promise<Date> {
         });
 }
 
-async function fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date): Promise<RepoRestaurant[]> {
-    const cachedValue: CacheValue | undefined = await VercelKVCache.get(databaseID);
-    
+async function fetchPlacesFromNotion(
+    databaseID: string,
+    lastModifiedDate: Date
+): Promise<RepoRestaurant[]> {
+    const cachedValue: CacheValue | undefined = await VercelKVCache.get(
+        databaseID
+    );
+
     if (cachedValue === null || cachedValue === undefined) {
-        console.debug("Cache not found for database %s, fetching all results", databaseID);
+        console.debug(
+            "Cache not found for database %s, fetching all results",
+            databaseID
+        );
         const results = await fetchAllResults(databaseID);
         const restaurantMap = new Map();
 
@@ -130,23 +226,37 @@ async function fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date)
     }
 
     if (cachedValue.lastUpdated === lastModifiedDate.toISOString()) {
-        console.debug("Cache found for database %s, returning cached results", databaseID);
-        const restaurantMap = new Map(Object.entries(cachedValue.restaurantMap));
+        console.debug(
+            "Cache found for database %s, returning cached results",
+            databaseID
+        );
+        const restaurantMap = new Map(
+            Object.entries(cachedValue.restaurantMap)
+        );
         return Array.from(restaurantMap.values());
     }
 
-    console.debug("Cache found for database %s, but last updated date is different, fetching new results", databaseID);
+    console.debug(
+        "Cache found for database %s, but last updated date is different, fetching new results",
+        databaseID
+    );
     console.debug("Last updated date in cache: %s", cachedValue.lastUpdated);
-    console.debug("Last updated date in request: %s", lastModifiedDate.toISOString());
+    console.debug(
+        "Last updated date in request: %s",
+        lastModifiedDate.toISOString()
+    );
 
     // Fetch only new entries not in the cache
-    const newEntries = await fetchAllResults(databaseID, new Date(cachedValue.lastUpdated));
+    const newEntries = await fetchAllResults(
+        databaseID,
+        new Date(cachedValue.lastUpdated)
+    );
     const restaurantMap = new Map(Object.entries(cachedValue.restaurantMap));
 
     newEntries.forEach((restaurant) => {
         restaurantMap.set(restaurant.id, restaurant);
     });
-    
+
     cachedValue.lastUpdated = lastModifiedDate.toISOString();
     cachedValue.restaurantMap = Object.fromEntries(restaurantMap);
 
@@ -155,7 +265,11 @@ async function fetchPlacesFromNotion(databaseID: string, lastModifiedDate: Date)
     return Array.from(restaurantMap.values());
 }
 
-async function patchPlaceMetadata(databaseID: string, placeID: string, metadata: RepoRestaurantMetadata): Promise<void> {
+async function patchPlaceMetadata(
+    databaseID: string,
+    placeID: string,
+    metadata: RepoRestaurantMetadata
+): Promise<void> {
     const metadataString = JSON.stringify(metadata);
 
     await fetch(`${NOTION_API_URL}/pages/${placeID}`, {
@@ -173,18 +287,22 @@ async function patchPlaceMetadata(databaseID: string, placeID: string, metadata:
                             type: "text",
                             text: {
                                 content: metadataString,
-                            }
-                        }
-                    ]
+                            },
+                        },
+                    ],
                 },
             },
         }),
     });
 
-    const cachedValue: CacheValue | undefined = await VercelKVCache.get(databaseID);
+    const cachedValue: CacheValue | undefined = await VercelKVCache.get(
+        databaseID
+    );
 
-    if (cachedValue !== undefined) {
-        const restaurantMap = new Map(Object.entries(cachedValue.restaurantMap));
+    if (cachedValue !== undefined && cachedValue !== null) {
+        const restaurantMap = new Map(
+            Object.entries(cachedValue.restaurantMap)
+        );
 
         const restaurant = restaurantMap.get(placeID);
         if (restaurant !== undefined) {
@@ -196,19 +314,31 @@ async function patchPlaceMetadata(databaseID: string, placeID: string, metadata:
 
 // fetchAllResults fetches all results from a Notion database, making multiple requests while the has_more field is true.
 // If lastModifiedDate is provided, it will only fetch entries that were last edited after that date.
-async function fetchAllResults(databaseID: string, lastModifiedDate?: Date): Promise<RepoRestaurant[]> {
+async function fetchAllResults(
+    databaseID: string,
+    lastModifiedDate?: Date
+): Promise<RepoRestaurant[]> {
     let results: RepoRestaurant[] = [];
     let hasMore = true;
     let start_cursor: string | undefined = undefined;
 
-    while(hasMore) {
-        const req = buildDatabasePOSTRequest(databaseID, lastModifiedDate, start_cursor);
+    while (hasMore) {
+        const req = buildDatabasePOSTRequest(
+            databaseID,
+            lastModifiedDate,
+            start_cursor
+        );
 
-        const res: any = await fetch(req, {cache: "no-store"}).then((response) => { 
-            console.debug("Notion API response status: %s", response.status);
+        const res: any = await fetch(req, { cache: "no-store" }).then(
+            (response) => {
+                console.debug(
+                    "Notion API response status: %s",
+                    response.status
+                );
 
-            return response.json()
-        });
+                return response.json();
+            }
+        );
 
         res.results.map((entry: any) => {
             results.push(jsonEntryToPlaceItem(entry));
@@ -223,7 +353,11 @@ async function fetchAllResults(databaseID: string, lastModifiedDate?: Date): Pro
     return results;
 }
 
-function buildDatabasePOSTRequest(databaseID: string, lastModifiedDate?: Date, start_cursor?: string): Request {
+function buildDatabasePOSTRequest(
+    databaseID: string,
+    lastModifiedDate?: Date,
+    start_cursor?: string
+): Request {
     let body: POSTBody | undefined = undefined;
     if (lastModifiedDate !== undefined || start_cursor !== undefined) {
         body = {};
@@ -245,7 +379,7 @@ function buildDatabasePOSTRequest(databaseID: string, lastModifiedDate?: Date, s
     return new Request(`${NOTION_API_URL}/databases/${databaseID}/query`, {
         method: "POST",
         headers: {
-            "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+            Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
             "Notion-Version": `${process.env.NOTION_API_VERSION}`,
             "Content-Type": "application/json",
         },
@@ -297,12 +431,12 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
                 if (entry.properties[key].url !== null) {
                     newPlace.mapsUrl = entry.properties[key].url;
                 }
-                
+
                 break;
             }
             case visitedLabel: {
                 if (entry.properties[key].status.name === null) {
-                    break
+                    break;
                 }
 
                 const visitedValue =
@@ -311,7 +445,7 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
                     newPlace.visited = false;
                 } else {
                     newPlace.visited = true;
-                    newPlace.rating = visitedValue
+                    newPlace.rating = visitedValue;
                 }
 
                 break;
@@ -319,7 +453,10 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
             case typeLabel: {
                 const typeValue = entry.properties[key].multi_select;
                 for (const tagItem of typeValue) {
-                    newPlace.tags.push({ tag: tagItem.name, color: tagItem.color });
+                    newPlace.tags.push({
+                        tag: tagItem.name,
+                        color: tagItem.color,
+                    });
                 }
 
                 break;
@@ -335,7 +472,10 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
                 if (entry.properties[key].multi_select !== null) {
                     const ambienceValue = entry.properties[key].multi_select;
                     for (const tagItem of ambienceValue) {
-                        newPlace.ambience.push({ tag: tagItem.name, color: tagItem.color });
+                        newPlace.ambience.push({
+                            tag: tagItem.name,
+                            color: tagItem.color,
+                        });
                     }
                 }
 
@@ -343,30 +483,44 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
             }
             case metadataLabel: {
                 try {
-                    newPlace.metadata = tryParseMetadataField(entry.properties[key].rich_text);
+                    newPlace.metadata = tryParseMetadataField(
+                        entry.properties[key].rich_text
+                    );
                 } catch (e) {
                     newPlace.hasFaultyMetadata = true;
                 }
-                
+
                 break;
             }
             case locationLabel: {
-                if (entry.properties[key].rich_text !== null && entry.properties[key].rich_text.length > 0) {
-                    newPlace.location = entry.properties[key].rich_text[0].text.content;
+                if (
+                    entry.properties[key].rich_text !== null &&
+                    entry.properties[key].rich_text.length > 0
+                ) {
+                    newPlace.location =
+                        entry.properties[key].rich_text[0].text.content;
                 }
 
-                break
+                break;
             }
             case recommenderLabel: {
-                if (entry.properties[key].rich_text !== null && entry.properties[key].rich_text.length > 0) {
-                    newPlace.recommender = entry.properties[key].rich_text[0].text.content;
+                if (
+                    entry.properties[key].rich_text !== null &&
+                    entry.properties[key].rich_text.length > 0
+                ) {
+                    newPlace.recommender =
+                        entry.properties[key].rich_text[0].text.content;
                 }
 
                 break;
             }
             case descriptionLabel: {
-                if (entry.properties[key].rich_text !== null && entry.properties[key].rich_text.length > 0) {
-                    newPlace.description = entry.properties[key].rich_text[0].text.content;
+                if (
+                    entry.properties[key].rich_text !== null &&
+                    entry.properties[key].rich_text.length > 0
+                ) {
+                    newPlace.description =
+                        entry.properties[key].rich_text[0].text.content;
                 }
 
                 break;
@@ -394,8 +548,8 @@ function tryParseMetadataField(metadataField: any[]): RepoRestaurantMetadata {
             coordinates: {
                 latitude: parsedMetadata.coordinates.latitude,
                 longitude: parsedMetadata.coordinates.longitude,
-            }
-        }
+            },
+        };
     } catch (e) {
         throw new Error("Metadata field is not a valid JSON");
     }

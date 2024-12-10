@@ -6,6 +6,7 @@ import { Dispatch, SetStateAction } from "react";
 import GoogleSignInButton from "./GoogleSignInButton";
 import SignOutButton from "./SignOutButton";
 import { TrashIcon } from "@/lib/util/svg";
+import { UserRole } from "@/lib/util/enums";
 
 export default function HiddenAdminPopup({
     isVisible,
@@ -45,7 +46,7 @@ export default function HiddenAdminPopup({
                             {userRole}
                         </span>
                     </p>
-                    {userRole === "admin" && (
+                    {userRole === UserRole.ADMIN && (
                         <button
                             className={styles.wipeCacheButton}
                             onClick={async () =>

@@ -304,7 +304,7 @@ export default function MapComponent({
             });
 
             const properties = place.properties;
-            const googleMapsHTML = `<a style="text-decoration: underline; color: blue" href="${properties.mapsUrl}">Google Maps Link</a>`;
+            const googleMapsHTML = `<p><a style="text-decoration: underline; color: blue" href="${properties.mapsUrl}">Google Maps Link</a></p>`;
             let baseHTML = `
 					<h3>${properties.name}</h3>
 					<p>${properties.rating === "" ? "New!" : "Rating: " + properties.rating}</p>
@@ -314,9 +314,16 @@ export default function MapComponent({
 
             if (userRole === UserRole.ADMIN && properties.recommender) {
                 baseHTML += `<p>Recommended by: ${properties.recommender}</p>`;
+                
             }
 
             baseHTML += googleMapsHTML;
+
+            if (userRole === UserRole.ADMIN) {
+                const buttonLabel = properties.visited ? "Edit Rating" : "Add Rating";
+                const editRatingButton = `<br/><p><button style="float: right;" onclick="window.location.href='/restaurants/editRating?placeId=${placeId}'">${buttonLabel}</button></p>`;
+                baseHTML += editRatingButton;
+            }
 
             new Popup()
                 .setLngLat(coordinates)
