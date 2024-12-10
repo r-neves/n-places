@@ -18,4 +18,8 @@ export default class VercelKVCache {
     static async set(key: string, value: any) {
         await kv.set(key, value, {ex: cacheTTL});
     }
+
+    static async evictCache() {
+        await kv.flushall();
+    }
 }

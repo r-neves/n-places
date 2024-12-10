@@ -8,4 +8,8 @@ export default class VercelKVCache {
     static async set(_key: string, _value: any) {
         // Do nothing
     }
+
+    static async evictCache() {
+        // Do nothing
+    }
 }
