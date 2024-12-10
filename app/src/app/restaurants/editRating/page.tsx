@@ -1,12 +1,12 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import styles from "./page.module.css";
 import { useSession } from "next-auth/react";
 import { UserRole } from "@/lib/util/enums";
 
-export default function EditRatingPage() {
+function EditRatingPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -39,7 +39,7 @@ export default function EditRatingPage() {
 
     useEffect(() => {
         if (placeId) {
-            fetch(`/api/restaurants/${placeId}`, {cache: "no-store"})
+            fetch(`/api/restaurants/${placeId}`, { cache: "no-store" })
                 .then((response) => {
                     response.json().then((data) => {
                         setPlaceName(data.name);
@@ -113,7 +113,7 @@ export default function EditRatingPage() {
             })
             .catch((error) => {
                 console.error("Error submitting rating:", error);
-            })
+            });
     };
 
     if (status === "loading" || userRole === null) {
@@ -217,5 +217,13 @@ export default function EditRatingPage() {
                 </button>
             </div>
         </div>
+    );
+}
+
+export default function WrappedEditRatingPage() {
+    return (
+        <Suspense fallback={<div className={styles.page}>Loading...</div>}>
+            <EditRatingPage />
+        </Suspense>
     );
 }
