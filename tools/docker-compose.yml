@@ -1,0 +1,10 @@
+services:
+  jaeger:
+    image: ${REGISTRY:-}jaegertracing/all-in-one:${JAEGER_VERSION:-latest}
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      # The endpoint where the OTEL should send the spans to is http://localhost:4318/v1/traces
+      - "4318:4318"
+    environment:
+      - LOG_LEVEL=debug
