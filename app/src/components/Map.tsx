@@ -27,11 +27,7 @@ import { useSession } from "next-auth/react";
 const HOME_COORDINATES_LATITUDE = 38.773776659219195;
 const HOME_COORDINATES_LONGITUDE = -9.105364651707808;
 
-export default function MapComponent({
-    version,
-}: {
-    version: string | undefined;
-}) {
+export default function MapComponent() {
     let [mapLoaded, setMapLoaded] = useState(false);
     let [searchItems, setSearchItems] = useState<SearchItem[]>([]);
     let [isHiddenPopupVisible, setIsHiddenPopupVisible] = useState(false);
@@ -314,13 +310,14 @@ export default function MapComponent({
 
             if (userRole === UserRole.ADMIN && properties.recommender) {
                 baseHTML += `<p>Recommended by: ${properties.recommender}</p>`;
-                
             }
 
             baseHTML += googleMapsHTML;
 
             if (userRole === UserRole.ADMIN) {
-                const buttonLabel = properties.visited ? "Edit Rating" : "Add Rating";
+                const buttonLabel = properties.visited
+                    ? "Edit Rating"
+                    : "Add Rating";
                 const editRatingButton = `<br/><p><button style="float: right;" onclick="window.location.href='/restaurants/editRating?placeId=${placeId}'">${buttonLabel}</button></p>`;
                 baseHTML += editRatingButton;
             }
@@ -342,7 +339,6 @@ export default function MapComponent({
             });
 
             if (!features || !features.length) {
-
                 // Reset filters to show all features in the normal layer
                 for (const tag in RestaurantItems) {
                     map.current?.setFilter(`${tag}`, null); // Show all features
