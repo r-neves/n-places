@@ -1,37 +1,37 @@
-import restaurant from "../../images/icons/restaurants/restaurant.svg";
-import restaurantSelected from "../../images/icons/restaurants/restaurant_selected.svg";
-import asian from "../../images/icons/restaurants/asian.svg";
-import asianSelected from "../../images/icons/restaurants/asian_selected.svg";
-import brunch from "../../images/icons/restaurants/brunch.svg";
-import brunchSelected from "../../images/icons/restaurants/brunch_selected.svg";
-import buffet from "../../images/icons/restaurants/buffet.svg";
-import buffetSelected from "../../images/icons/restaurants/buffet_selected.svg";
-import fish from "../../images/icons/restaurants/fish.svg";
-import fishSelected from "../../images/icons/restaurants/fish_selected.svg";
-import francesinha from "../../images/icons/restaurants/francesinha.svg";
-import francesinhaSelected from "../../images/icons/restaurants/francesinha_selected.svg";
-import hamburgers from "../../images/icons/restaurants/hamburgers.svg";
-import hamburgersSelected from "../../images/icons/restaurants/hamburgers_selected.svg";
-import indian from "../../images/icons/restaurants/indian.svg";
-import indianSelected from "../../images/icons/restaurants/indian_selected.svg";
-import italian from "../../images/icons/restaurants/italian.svg";
-import italianSelected from "../../images/icons/restaurants/italian_selected.svg";
-import meat from "../../images/icons/restaurants/meat.svg";
-import meatSelected from "../../images/icons/restaurants/meat_selected.svg";
-import mexican from "../../images/icons/restaurants/mexican.svg";
-import mexicanSelected from "../../images/icons/restaurants/mexican_selected.svg";
-import portuguese from "../../images/icons/restaurants/portuguese.svg";
-import portugueseSelected from "../../images/icons/restaurants/portuguese_selected.svg";
-import ramen from "../../images/icons/restaurants/ramen.svg";
-import ramenSelected from "../../images/icons/restaurants/ramen_selected.svg";
-import seafood from "../../images/icons/restaurants/seafood.svg";
-import seafoodSelected from "../../images/icons/restaurants/seafood_selected.svg";
-import sushi from "../../images/icons/restaurants/sushi.svg";
-import sushiSelected from "../../images/icons/restaurants/sushi_selected.svg";
-import tapas from "../../images/icons/restaurants/tapas.svg";
-import tapasSelected from "../../images/icons/restaurants/tapas_selected.svg";
-import vegetarian from "../../images/icons/restaurants/vegetarian.svg";
-import vegetarianSelected from "../../images/icons/restaurants/vegetarian_selected.svg";
+import restaurant from "../../images/icons/restaurants/icon-restaurant-default.png";
+import restaurantSelected from "../../images/icons/restaurants/icon-restaurant-active.png";
+import asian from "../../images/icons/restaurants/icon-asian-default.png";
+import asianSelected from "../../images/icons/restaurants/icon-asian-active.png";
+import brunch from "../../images/icons/restaurants/icon-brunch-default.png";
+import brunchSelected from "../../images/icons/restaurants/icon-brunch-active.png";
+import buffet from "../../images/icons/restaurants/icon-buffet-default.png";
+import buffetSelected from "../../images/icons/restaurants/icon-buffet-active.png";
+import fish from "../../images/icons/restaurants/icon-fish-default.png";
+import fishSelected from "../../images/icons/restaurants/icon-fish-active.png";
+import francesinha from "../../images/icons/restaurants/icon-francesinha-default.png";
+import francesinhaSelected from "../../images/icons/restaurants/icon-francesinha-active.png";
+import hamburgers from "../../images/icons/restaurants/icon-hamburger-default.png";
+import hamburgersSelected from "../../images/icons/restaurants/icon-hamburger-active.png";
+import indian from "../../images/icons/restaurants/icon-indian-default.png";
+import indianSelected from "../../images/icons/restaurants/icon-indian-active.png";
+import italian from "../../images/icons/restaurants/icon-italian-default.png";
+import italianSelected from "../../images/icons/restaurants/icon-italian-active.png";
+import meat from "../../images/icons/restaurants/icon-meat-default.png";
+import meatSelected from "../../images/icons/restaurants/icon-meat-active.png";
+import mexican from "../../images/icons/restaurants/icon-mexican-default.png";
+import mexicanSelected from "../../images/icons/restaurants/icon-mexican-active.png";
+import portuguese from "../../images/icons/restaurants/icon-portuguese-default.png";
+import portugueseSelected from "../../images/icons/restaurants/icon-portuguese-active.png";
+import ramen from "../../images/icons/restaurants/icon-ramen-default.png";
+import ramenSelected from "../../images/icons/restaurants/icon-ramen-active.png";
+import seafood from "../../images/icons/restaurants/icon-seafood-default.png";
+import seafoodSelected from "../../images/icons/restaurants/icon-seafood-active.png";
+import sushi from "../../images/icons/restaurants/icon-sushi-default.png";
+import sushiSelected from "../../images/icons/restaurants/icon-sushi-active.png";
+import tapas from "../../images/icons/restaurants/icon-tapas-default.png";
+import tapasSelected from "../../images/icons/restaurants/icon-tapas-active.png";
+import vegetarian from "../../images/icons/restaurants/icon-vegetarian-default.png";
+import vegetarianSelected from "../../images/icons/restaurants/icon-vegetarian-active.png";
 import { Restaurant } from "@/lib/places/domain/restaurant";
 
 interface RestaurantItem {
@@ -46,7 +46,7 @@ interface RestaurantItem {
     [key: string]: RestaurantItem;
   }
 
-export const IMAGE_SIZE = 32;
+export const IMAGE_SIZE = 64;
 
 export const RestaurantItems: RestaurantItems = {
     "restaurant": {
