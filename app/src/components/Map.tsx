@@ -36,14 +36,12 @@ export default function MapComponent() {
     const { data: session, status } = useSession();
 
     async function loadImages() {
-        // The source image will be double the size of the target icon to improve quality
-        const size = IMAGE_SIZE * 2;
         Object.values(RestaurantItems).forEach((item) => {
-            const iconImage = new Image(size, size);
+            const iconImage = new Image(IMAGE_SIZE, IMAGE_SIZE);
             iconImage.onload = () => map.current?.addImage(item.id, iconImage);
             iconImage.src = item.image.src;
 
-            const selectedIconImage = new Image(size, size);
+            const selectedIconImage = new Image(IMAGE_SIZE, IMAGE_SIZE);
             selectedIconImage.onload = () =>
                 map.current?.addImage(`${item.id}-selected`, selectedIconImage);
             selectedIconImage.src = item.selectedImage.src;
@@ -68,6 +66,7 @@ export default function MapComponent() {
         for (const tag in restaurantsByTag) {
             const sourceSpec: SourceSpecification = {
                 type: "geojson",
+                cluster: false, // TODO think on how to cluster in the future
                 data: {
                     type: "FeatureCollection",
                     features: restaurantsByTag[tag].map((entry) => ({
