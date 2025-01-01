@@ -1,6 +1,6 @@
 import { signOut } from 'next-auth/react'
 import styles from "./signout.module.css";
-import { SignOutIcon } from '@/lib/util/svg';
+import { SignOutIcon } from '@/lib/constants/svg';
 
 const SignOutButton = () => {
   return (

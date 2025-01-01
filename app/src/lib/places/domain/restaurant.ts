@@ -10,6 +10,7 @@ export interface Restaurant {
 	location: string;
 	recommender: string;
 	description: string;
+	review: string;
 	metadata: RestaurantMetadata;
 }
 

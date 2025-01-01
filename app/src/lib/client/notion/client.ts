@@ -398,6 +398,7 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
     const locationLabel = "location";
     const recommenderLabel = "recommender";
     const descriptionLabel = "description";
+    const reviewLabel = "review";
 
     const notVisitedValue = "not visited";
 
@@ -413,6 +414,7 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
         location: "",
         recommender: "",
         description: "",
+        review: "",
         metadata: { coordinates: { latitude: 0, longitude: 0 } },
         hasFaultyMetadata: false,
     };
@@ -520,6 +522,17 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
                     entry.properties[key].rich_text.length > 0
                 ) {
                     newPlace.description =
+                        entry.properties[key].rich_text[0].text.content;
+                }
+
+                break;
+            }
+            case reviewLabel: {
+                if (
+                    entry.properties[key].rich_text !== null &&
+                    entry.properties[key].rich_text.length > 0
+                ) {
+                    newPlace.review =
                         entry.properties[key].rich_text[0].text.content;
                 }
 

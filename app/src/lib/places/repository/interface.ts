@@ -10,6 +10,7 @@ export interface RepoRestaurant {
 	location: string;
 	recommender: string;
 	description: string;
+	review: string;
 	metadata: RepoRestaurantMetadata;
 	hasFaultyMetadata: boolean;
 }
