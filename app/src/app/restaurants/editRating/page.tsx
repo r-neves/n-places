@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import styles from "./page.module.css";
 import { useSession } from "next-auth/react";
-import { UserRole } from "@/lib/util/enums";
+import { UserRole } from "@/lib/constants/enums";
 
 function EditRatingPage() {
     const { data: session, status } = useSession();

@@ -1,6 +1,6 @@
 import { signIn } from 'next-auth/react'
 import styles from "./google.module.css";
-import { GoogleLogo } from '@/lib/util/svg';
+import { GoogleLogo } from '@/lib/constants/svg';
 
 const GoogleSignInButton = () => {
   return (

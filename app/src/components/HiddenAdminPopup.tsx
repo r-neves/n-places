@@ -5,8 +5,8 @@ import styles from "./hidden.module.css";
 import { Dispatch, SetStateAction } from "react";
 import GoogleSignInButton from "./GoogleSignInButton";
 import SignOutButton from "./SignOutButton";
-import { TrashIcon } from "@/lib/util/svg";
-import { UserRole } from "@/lib/util/enums";
+import { TrashIcon } from "@/lib/constants/svg";
+import { UserRole } from "@/lib/constants/enums";
 
 export default function HiddenAdminPopup({
     isVisible,

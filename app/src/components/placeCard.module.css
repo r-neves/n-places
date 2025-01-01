@@ -1,0 +1,126 @@
+.placeCard {
+    z-index: 2;
+    position: absolute;
+    width: 100vw;
+    bottom: 0;
+    left: 0;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    background-color: #f7f6f3;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    font-weight: 300;
+}
+
+@media (width > 800px) {
+    .placeCard {
+        width: 600px;
+    }
+}
+
+.spacedRow {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 18px;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.placeCard h2 {
+    font-weight: 600;
+}
+
+.field {
+    gap: 8px;
+}
+
+.caption {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    padding-bottom: 6px;
+}
+
+.body {
+    font-size: 14px;
+}
+
+.editBtn {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 0;
+    background-color: #e7e5e5;
+    font-weight: 600;
+    font-size: 17px;
+    cursor: pointer;
+}
+
+.mapsBtn {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background-color: black;
+    color: #f7f6f3;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.tagList {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 7px;
+}
+
+.type {
+    padding: 3px 9px;
+    color: #f7f6f3;
+    border-radius: 30px;
+}
+
+.ambience {
+    padding: 3px 9px;
+    background-color: #e8cead;
+    color: #a2824e;
+    border-radius: 30px;
+}
+
+.rating {
+    padding: 3px 9px;
+    color: #f7f6f3;
+    border-radius: 30px;
+    font-size: 14px;
+}
+
+.pricing {
+    padding: 3px 9px;
+    color: #f7f6f3;
+    border-radius: 30px;
+    font-size: 14px;
+}

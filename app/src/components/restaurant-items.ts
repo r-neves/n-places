@@ -33,146 +33,237 @@ import tapasSelected from "../../images/icons/restaurants/icon-tapas-active.png"
 import vegetarian from "../../images/icons/restaurants/icon-vegetarian-default.png";
 import vegetarianSelected from "../../images/icons/restaurants/icon-vegetarian-active.png";
 import { Restaurant } from "@/lib/places/domain/restaurant";
+import { NOTION_GREEN, NOTION_YELLOW, NOTION_RED, NOTION_GREY } from "@/lib/constants/colors";
 
-interface RestaurantItem {
+interface RestaurantType {
     id: string;
     image: any;
-    textColor: string;
+    color: string;
     selectedImage: any;
-    selectedTextColor: string;
-  }
-  
-  interface RestaurantItems {
-    [key: string]: RestaurantItem;
-  }
+    selectedColor: string;
+}
+
+interface RestaurantTypeMap {
+    [key: string]: RestaurantType;
+}
+
+interface Rating {
+    id: string;
+    color: string;
+}
+
+interface RatingMap {
+    [key: string]: Rating;
+}
+
+interface Price {
+    id: string;
+    color: string;
+}
+
+interface PriceMap {
+    [key: string]: Price;
+}
 
 export const IMAGE_SIZE = 64;
 
-export const RestaurantItems: RestaurantItems = {
-    "restaurant": {
+export const RestaurantTypeMap: RestaurantTypeMap = {
+    restaurant: {
         id: "restaurant",
         image: restaurant,
-        textColor: "#c94079",
+        color: "#c94079",
         selectedImage: restaurantSelected,
-        selectedTextColor: "#892b53"
+        selectedColor: "#892b53",
     },
-    "asian": {
+    asian: {
         id: "asian",
         image: asian,
-        textColor: "#8d5bc1",
+        color: "#8d5bc1",
         selectedImage: asianSelected,
-        selectedTextColor: "#5f3e84"
+        selectedColor: "#5f3e84",
     },
-    "brunch": {
+    brunch: {
         id: "brunch",
         image: brunch,
-        textColor: "#d87620",
+        color: "#d87620",
         selectedImage: brunchSelected,
-        selectedTextColor: "#934f16"
+        selectedColor: "#934f16",
     },
-    "buffet": {
+    buffet: {
         id: "buffet",
         image: buffet,
-        textColor: "#428bca",
+        color: "#428bca",
         selectedImage: buffetSelected,
-        selectedTextColor: "#0872cd"
+        selectedColor: "#0872cd",
     },
-    "fish": {
+    fish: {
         id: "fish",
         image: fish,
-        textColor: "#2d7cd1",
+        color: "#2d7cd1",
         selectedImage: fishSelected,
-        selectedTextColor: "#1f558f"
+        selectedColor: "#1f558f",
     },
-    "francesinha": {
+    francesinha: {
         id: "francesinha",
         image: francesinha,
-        textColor: "#ca8e1b",
+        color: "#ca8e1b",
         selectedImage: francesinhaSelected,
-        selectedTextColor: "#8a6013"
+        selectedColor: "#8a6013",
     },
-    "hamburgers": {
+    hamburgers: {
         id: "hamburgers",
         image: hamburgers,
-        textColor: "#8d5bc1",
+        color: "#8d5bc1",
         selectedImage: hamburgersSelected,
-        selectedTextColor: "#5f3e84"
+        selectedColor: "#5f3e84",
     },
-    "indian": {
+    indian: {
         id: "indian",
         image: indian,
-        textColor: "#eb5757",
+        color: "#eb5757",
         selectedImage: indianSelected,
-        selectedTextColor: "#ed2a29"
+        selectedColor: "#ed2a29",
     },
-    "italian": {
+    italian: {
         id: "italian",
         image: italian,
-        textColor: "#cd4944",
+        color: "#cd4944",
         selectedImage: italianSelected,
-        selectedTextColor: "#8c312f"
+        selectedColor: "#8c312f",
     },
-    "meat": {
+    meat: {
         id: "meat",
         image: meat,
-        textColor: "#cd4944",
+        color: "#cd4944",
         selectedImage: meatSelected,
-        selectedTextColor: "#8c312f"
+        selectedColor: "#8c312f",
     },
-    "mexican": {
+    mexican: {
         id: "mexican",
         image: mexican,
-        textColor: "#d87620",
+        color: "#d87620",
         selectedImage: mexicanSelected,
-        selectedTextColor: "#934f16"
+        selectedColor: "#934f16",
     },
-    "ramen": {
+    ramen: {
         id: "ramen",
         image: ramen,
-        textColor: "#2c9964",
+        color: "#2c9964",
         selectedImage: ramenSelected,
-        selectedTextColor: "#195637"
+        selectedColor: "#195637",
     },
-    "portuguese": {
+    portuguese: {
         id: "portuguese",
         image: portuguese,
-        textColor: "#2c9964",
+        color: "#2c9964",
         selectedImage: portugueseSelected,
-        selectedTextColor: "#1e6943"
+        selectedColor: "#1e6943",
     },
-    "seafood": {
+    seafood: {
         id: "seafood",
         image: seafood,
-        textColor: "#d87620",
+        color: "#d87620",
         selectedImage: seafoodSelected,
-        selectedTextColor: "#934f16"
+        selectedColor: "#934f16",
     },
-    "sushi": {
+    sushi: {
         id: "sushi",
         image: sushi,
-        textColor: "#c94079",
+        color: "#c94079",
         selectedImage: sushiSelected,
-        selectedTextColor: "#892b53"
+        selectedColor: "#892b53",
     },
-    "tapas": {
+    tapas: {
         id: "tapas",
         image: tapas,
-        textColor: "#c94079",
+        color: "#c94079",
         selectedImage: tapasSelected,
-        selectedTextColor: "#892b53"
+        selectedColor: "#892b53",
     },
-    "vegetarian": {
+    vegetarian: {
         id: "vegetarian",
         image: vegetarian,
-        textColor: "#2c9964",
+        color: "#2c9964",
         selectedImage: vegetarianSelected,
-        selectedTextColor: "#1e6943"
+        selectedColor: "#1e6943",
     },
 };
 
-export function splitRestaurantsByTag(restaurants: Restaurant[]): { [tag: string]: Restaurant[] } {
+export const RatingMap: RatingMap = {
+    "Not Visited": {
+        id: "Not Visited",
+        color: NOTION_GREY,
+    },
+    "1/10": {
+        id: "1/10",
+        color: NOTION_RED,
+    },
+    "2/10": {
+        id: "2/10",
+        color: NOTION_RED,
+    },
+    "3/10": {
+        id: "3/10",
+        color: NOTION_RED,
+    },
+    "4/10": {
+        id: "4/10",
+        color: NOTION_YELLOW,
+    },
+    "5/10": {
+        id: "5/10",
+        color: NOTION_YELLOW,
+    },
+    "6/10": {
+        id: "6/10",
+        color: NOTION_YELLOW,
+    },
+    "7/10": {
+        id: "7/10",
+        color: NOTION_GREEN,
+    },
+    "8/10": {
+        id: "8/10",
+        color: NOTION_GREEN,
+    },
+    "9/10": {
+        id: "9/10",
+        color: NOTION_GREEN,
+    },
+    "10/10": {
+        id: "10/10",
+        color: NOTION_GREEN,
+    },
+};
+
+export const PriceMap: PriceMap = {
+    "undefined": {
+        id: "Not defined",
+        color: NOTION_GREY,
+    },
+    "5-12 €": {
+        id: "5-12 €",
+        color: NOTION_GREEN,
+    },
+    "13-20 €": {
+        id: "13-20 €",
+        color: NOTION_YELLOW,
+    },
+    "21-35 €": {
+        id: "21-35 €",
+        color: NOTION_RED,
+    },
+    "+35 €": {
+        id: "+35 €",
+        color: NOTION_RED,
+    },
+};
+
+export function splitRestaurantsByTag(restaurants: Restaurant[]): {
+    [tag: string]: Restaurant[];
+} {
     const result: { [tag: string]: Restaurant[] } = {};
-    for (const key in RestaurantItems) {
+    for (const key in RestaurantTypeMap) {
         result[key] = [];
     }
 

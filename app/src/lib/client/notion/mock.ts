@@ -1,4 +1,4 @@
-import { UserRole } from "@/lib/util/enums";
+import { UserRole } from "@/lib/constants/enums";
 import { RepoRestaurant, RepoRestaurantMetadata } from "../../places/repository/interface";
 
 const mockRestaurants: RepoRestaurant[] = [
@@ -10,6 +10,7 @@ const mockRestaurants: RepoRestaurant[] = [
             }
         ],
         description: "",
+        review: "",
         dishPrice: "",
         id: "e0b6b3d6-8b16-4643-bb6c-0f73683d38a5",
         location: "Parque das Nações, Lisboa",

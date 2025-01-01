@@ -13,30 +13,35 @@ import {
 import { Restaurant } from "@/lib/places/domain/restaurant";
 import {
     IMAGE_SIZE,
-    RestaurantItems,
+    RestaurantTypeMap,
     splitRestaurantsByTag,
 } from "./restaurant-items";
 import { SearchBar, SearchItem } from "./SearchBar";
 import Loading from "@/components/Loading";
 import { capitalize } from "@/lib/util/format";
-import { UserRole } from "@/lib/util/enums";
+import { UserRole } from "@/lib/constants/enums";
 import { normalize } from "path";
 import HiddenAdminPopup from "./HiddenAdminPopup";
 import { useSession } from "next-auth/react";
+import PlaceCard from "./PlaceCard";
 
 const HOME_COORDINATES_LATITUDE = 38.773776659219195;
 const HOME_COORDINATES_LONGITUDE = -9.105364651707808;
+// The PlaceCard height occupies beyond the center of the screen, the flyTo latitude needs to be adjusted
+// so that the map place is still visible when clicked or searched.
+const LATITUDE_OFFSET = 0.0038;
 
 export default function MapComponent() {
     let [mapLoaded, setMapLoaded] = useState(false);
     let [searchItems, setSearchItems] = useState<SearchItem[]>([]);
     let [isHiddenPopupVisible, setIsHiddenPopupVisible] = useState(false);
     let [userRole, setUserRole] = useState("");
+    let [selectedPlace, setSelectedPlace] = useState<Restaurant | null>(null);
     const map = useRef<MapGL>();
     const { data: session, status } = useSession();
 
     async function loadImages() {
-        Object.values(RestaurantItems).forEach((item) => {
+        Object.values(RestaurantTypeMap).forEach((item) => {
             const iconImage = new Image(IMAGE_SIZE, IMAGE_SIZE);
             iconImage.onload = () => map.current?.addImage(item.id, iconImage);
             iconImage.src = item.image.src;
@@ -79,16 +84,11 @@ export default function MapComponent() {
                             ],
                         },
                         properties: {
+                            place: entry,
                             id: entry.id,
                             name: entry.name,
                             visited: entry.visited,
                             rating: entry.rating,
-                            mapsUrl: entry.mapsUrl,
-                            dishPrice: entry.dishPrice,
-                            ambience: entry.ambience
-                                .map((a) => a.tag)
-                                .join(", "),
-                            recommender: entry.recommender,
                             tags: entry.tags
                                 .map(
                                     (t: { tag: string; color: string }) => t.tag
@@ -126,7 +126,7 @@ export default function MapComponent() {
     }
 
     function addLayers() {
-        for (const tag in RestaurantItems) {
+        for (const tag in RestaurantTypeMap) {
             map.current?.addLayer({
                 id: tag,
                 type: "symbol",
@@ -167,7 +167,7 @@ export default function MapComponent() {
                     visibility: "none", // Initially hidden
                 },
                 paint: {
-                    "text-color": RestaurantItems[tag].textColor,
+                    "text-color": RestaurantTypeMap[tag].color,
                 },
                 filter: ["!=", ["get", "id"], ""],
             });
@@ -217,7 +217,7 @@ export default function MapComponent() {
                         visibility: "visible",
                     },
                     paint: {
-                        "text-color": RestaurantItems[tag].selectedTextColor,
+                        "text-color": RestaurantTypeMap[tag].selectedColor,
                     },
                     filter: ["==", ["get", "id"], ""],
                 },
@@ -241,7 +241,7 @@ export default function MapComponent() {
 
     function addEventListeners() {
         const queryLayers: string[] = [];
-        for (const tag in RestaurantItems) {
+        for (const tag in RestaurantTypeMap) {
             queryLayers.push(tag);
             queryLayers.push(`${tag}-name`);
         }
@@ -291,6 +291,11 @@ export default function MapComponent() {
             }
 
             const coordinates = geometry.coordinates as [number, number];
+            if (coordinates[1] > 0) {
+                coordinates[1] = coordinates[1] - LATITUDE_OFFSET;
+            } else {
+                coordinates[1] = coordinates[1] + LATITUDE_OFFSET;
+            }
 
             map.current?.flyTo({
                 center: coordinates,
@@ -298,33 +303,8 @@ export default function MapComponent() {
                 zoom: 15,
             });
 
-            const properties = place.properties;
-            const googleMapsHTML = `<p><a style="text-decoration: underline; color: blue" href="${properties.mapsUrl}">Google Maps Link</a></p>`;
-            let baseHTML = `
-					<h3>${properties.name}</h3>
-					<p>${properties.rating === "" ? "New!" : "Rating: " + properties.rating}</p>
-					${properties.tags ? `<p>Tags: ${properties.tags}</p>` : ""}
-					${properties.dishPrice ? `<p>Dish Price: ${properties.dishPrice}</p>` : ""}
-					${properties.ambience ? `<p>Ambience: ${properties.ambience}</p>` : ""}`;
-
-            if (userRole === UserRole.ADMIN && properties.recommender) {
-                baseHTML += `<p>Recommended by: ${properties.recommender}</p>`;
-            }
-
-            baseHTML += googleMapsHTML;
-
-            if (userRole === UserRole.ADMIN) {
-                const buttonLabel = properties.visited
-                    ? "Edit Rating"
-                    : "Add Rating";
-                const editRatingButton = `<br/><p><button style="float: right;" onclick="window.location.href='/restaurants/editRating?placeId=${placeId}'">${buttonLabel}</button></p>`;
-                baseHTML += editRatingButton;
-            }
-
-            new Popup()
-                .setLngLat(coordinates)
-                .setHTML(baseHTML)
-                .addTo(map.current);
+            const parsedPlace = JSON.parse(place.properties.place);
+            setSelectedPlace(parsedPlace);
         };
 
         const onEmptyClickHandler = (
@@ -339,7 +319,7 @@ export default function MapComponent() {
 
             if (!features || !features.length) {
                 // Reset filters to show all features in the normal layer
-                for (const tag in RestaurantItems) {
+                for (const tag in RestaurantTypeMap) {
                     map.current?.setFilter(`${tag}`, null); // Show all features
                     map.current?.setFilter(`${tag}-name`, null); // Show all features
                     map.current?.setFilter(`${tag}-selected`, [
@@ -353,13 +333,15 @@ export default function MapComponent() {
                         -1,
                     ]); // No feature matches -1
                 }
+
+                setSelectedPlace(null);
             }
         };
 
         map.current?.off("click", onEmptyClickHandler);
         map.current?.on("click", onEmptyClickHandler);
 
-        for (const tag in RestaurantItems) {
+        for (const tag in RestaurantTypeMap) {
             map.current?.off("click", tag, onPlaceClickHandler);
             map.current?.on("click", tag, onPlaceClickHandler);
             map.current?.off("click", `${tag}-name`, onPlaceClickHandler);
@@ -394,7 +376,7 @@ export default function MapComponent() {
     function addZoomEventListener() {
         map.current?.on("zoomend", () => {
             const zoom = map.current?.getZoom();
-            for (const tag in RestaurantItems) {
+            for (const tag in RestaurantTypeMap) {
                 map.current?.setLayoutProperty(
                     `${tag}-name`,
                     "visibility",
@@ -411,7 +393,7 @@ export default function MapComponent() {
             label: "Visited",
             type: "state",
             clickHandler: () => {
-                for (const tag in RestaurantItems) {
+                for (const tag in RestaurantTypeMap) {
                     map.current?.setFilter(tag, ["==", "visited", true]);
                     map.current?.setFilter(`${tag}-name`, [
                         "==",
@@ -426,7 +408,7 @@ export default function MapComponent() {
             label: "Not Visited",
             type: "state",
             clickHandler: () => {
-                for (const tag in RestaurantItems) {
+                for (const tag in RestaurantTypeMap) {
                     map.current?.setFilter(tag, ["==", "visited", false]);
                     map.current?.setFilter(`${tag}-name`, [
                         "==",
@@ -437,13 +419,13 @@ export default function MapComponent() {
             },
         });
 
-        for (const tag in RestaurantItems) {
-            const label = capitalize(RestaurantItems[tag].id);
+        for (const tag in RestaurantTypeMap) {
+            const label = capitalize(RestaurantTypeMap[tag].id);
             items.push({
                 label: label,
                 type: "tag",
                 clickHandler: () => {
-                    for (const t in RestaurantItems) {
+                    for (const t in RestaurantTypeMap) {
                         map.current?.setFilter(t, [
                             "in",
                             tag,
@@ -476,16 +458,50 @@ export default function MapComponent() {
                 label: restaurant.name,
                 type: "place",
                 clickHandler: () => {
+                    // Update the selected place
+                    for (const t in RestaurantTypeMap) {
+                        map.current?.setFilter(`${t}`, [
+                            "!=",
+                            ["get", "id"],
+                            restaurant.id,
+                        ]);
+                        map.current?.setFilter(`${t}-name`, [
+                            "!=",
+                            ["get", "id"],
+                            restaurant.id,
+                        ]);
+                        map.current?.setFilter(`${t}-selected`, [
+                            "==",
+                            ["get", "id"],
+                            restaurant.id,
+                        ]);
+                        map.current?.setFilter(`${t}-name-selected`, [
+                            "==",
+                            ["get", "id"],
+                            restaurant.id,
+                        ]);
+                        // TODO figure out why this doesn't work
+                        map.current?.moveLayer(`${t}-selected`, `${t}`);
+                    }
+
                     const coordinates = [
                         restaurant.metadata.coordinates.longitude,
                         restaurant.metadata.coordinates.latitude,
                     ] as [number, number];
+
+                    if (coordinates[1] > 0) {
+                        coordinates[1] = coordinates[1] - LATITUDE_OFFSET;
+                    } else {
+                        coordinates[1] = coordinates[1] + LATITUDE_OFFSET;
+                    }
 
                     map.current?.flyTo({
                         center: coordinates,
                         speed: 0.8,
                         zoom: 15,
                     });
+
+                    setSelectedPlace(restaurant);
                 },
             });
 
@@ -518,9 +534,21 @@ export default function MapComponent() {
     }
 
     function resetFilters() {
-        for (const tag in RestaurantItems) {
+        for (const tag in RestaurantTypeMap) {
             map.current?.setFilter(tag, null);
             map.current?.setFilter(`${tag}-name`, null);
+            map.current?.setFilter(`${tag}-selected`, [
+                "==",
+                ["get", "id"],
+                -1,
+            ]);
+            map.current?.setFilter(`${tag}-name-selected`, [
+                "==",
+                ["get", "id"],
+                -1,
+            ]);
+
+            setSelectedPlace(null);
         }
     }
 
@@ -606,6 +634,7 @@ export default function MapComponent() {
                 resetFiltersHandler={resetFilters}
             ></SearchBar>
             <div id="mapElem" className={styles.mapCanvas}></div>
+            <PlaceCard place={selectedPlace} userRole={userRole} />
             <HiddenAdminPopup
                 isVisible={isHiddenPopupVisible}
                 setIsVisible={setIsHiddenPopupVisible}
