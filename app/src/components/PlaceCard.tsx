@@ -58,7 +58,12 @@ export default function PlaceCard({
             <div className={styles.spacedRow}>
                 <h2>{place.name}</h2>
                 {userRole === UserRole.ADMIN && (
-                    <button className={styles.editBtn}>
+                    <button
+                        className={styles.editBtn}
+                        onClick={() => {
+                            window.location.href = `/restaurants/editRating?placeId=${place.id}`;
+                        }}
+                    >
                         <EditIcon />
                         Edit
                     </button>
