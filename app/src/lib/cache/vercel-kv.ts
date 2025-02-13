@@ -7,6 +7,12 @@ export default class VercelKVCache {
     constructor() {}
 
     static async get(key: string): Promise<any | null> {
+        if (process.env.KV_REST_API_URL === undefined || process.env.KV_REST_API_TOKEN === undefined) {
+            console.debug("KV env vars not defined, skipping cache");
+
+            return null;
+        }
+
         const value: string | null = await kv.get(key);
         if (value === null) {
             return null;
@@ -16,6 +22,12 @@ export default class VercelKVCache {
     }
 
     static async set(key: string, value: any) {
+        if (process.env.KV_REST_API_URL === undefined || process.env.KV_REST_API_TOKEN === undefined) {
+            console.debug("KV env vars not defined, skipping cache");
+
+            return;
+        }
+
         await kv.set(key, value, {ex: cacheTTL});
     }
 

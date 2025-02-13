@@ -577,9 +577,14 @@ export default function MapComponent() {
                 { cache: "no-store" }
             ).then((response) => response.json());
 
+            // This result was previously cached, but that resulted
+            // in the KV cache being populated with stale data.
+            // Therefore, we're not caching it anymore.
+            //
+            // Rodrigo Neves - 2025-02-13
             const restaurants = await fetch(
                 `/api/restaurants?lastModifiedDate=${lastModifiedDate}`,
-                { cache: "force-cache" }
+                { cache: "no-store" }
             ).then((response) => response.json());
 
             console.info(

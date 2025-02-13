@@ -71,7 +71,7 @@ export default class NotionAPIClient {
         databaseID: string,
         placeID: string,
         propertyID: string,
-        ratingID: string,
+        ratingID: string
     ): Promise<void> {
         await fetch(`${NOTION_API_URL}/pages/${placeID}`, {
             method: "PATCH",
