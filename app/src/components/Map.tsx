@@ -37,7 +37,7 @@ export default function MapComponent() {
     let [isHiddenPopupVisible, setIsHiddenPopupVisible] = useState(false);
     let [userRole, setUserRole] = useState("");
     let [selectedPlace, setSelectedPlace] = useState<Restaurant | null>(null);
-    const map = useRef<MapGL>();
+    const map = useRef<MapGL>(undefined);
     const { data: session, status } = useSession();
 
     async function loadImages() {
