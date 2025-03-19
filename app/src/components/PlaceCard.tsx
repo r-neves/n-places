@@ -30,6 +30,14 @@ export default function PlaceCard({
         );
     });
 
+    if (place.tags.length === 0) {
+        typeElems.push(
+            <p key="no-type" className={styles.body}>
+                -
+            </p>
+        );
+    }
+
     let ambienceElems: JSX.Element[] = [];
     place.ambience.forEach((t) => {
         ambienceElems.push(
@@ -38,6 +46,14 @@ export default function PlaceCard({
             </span>
         );
     });
+
+    if (place.ambience.length === 0) {
+        ambienceElems.push(
+            <p key="no-ambience" className={styles.body}>
+                -
+            </p>
+        );
+    }
 
     let rating = "Not Visited";
     let ratingColor = RatingMap["Not Visited"].color;
@@ -52,6 +68,23 @@ export default function PlaceCard({
         dishPrice = place.dishPrice;
         dishPriceColor = PriceMap[place.dishPrice].color;
     }
+
+    let location = place.location;
+    if (location === "") {
+        location = "-";
+    }
+
+    let notes = place.description;
+    if (notes === "") {
+        notes = "-";
+    }
+
+    let review = place.review;
+    if (review === "") {
+        review = "-";
+    }
+
+
 
     return (
         <div className={styles.placeCard}>
@@ -99,15 +132,15 @@ export default function PlaceCard({
             </div>
             <div>
                 <p className={styles.caption}>LOCATION</p>
-                <p className={styles.body}>{place.location}</p>
+                <p className={styles.body}>{location}</p>
             </div>
             <div>
                 <p className={styles.caption}>NOTES</p>
-                <p className={styles.body}>{place.description}</p>
+                <p className={styles.body}>{notes}</p>
             </div>
             <div>
                 <p className={styles.caption}>REVIEW</p>
-                <p className={styles.body}>{place.review}</p>
+                <p className={styles.body}>{review}</p>
             </div>
             <div>
                 <p className={styles.caption}>TYPE</p>
@@ -121,7 +154,7 @@ export default function PlaceCard({
                     {ambienceElems}
                 </div>
             </div>
-            <a href={place.mapsUrl} className={styles.mapsBtn}>
+            <a href={place.mapsUrl} target="_blank" className={styles.mapsBtn}>
                 <GoogleMapsMarker />
                 <p>Go to Google Maps</p>
             </a>
