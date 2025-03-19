@@ -8,10 +8,8 @@ module.exports = async (phase) => {
   /** @type {import("next").NextConfig} */
   const nextConfig = {
     reactStrictMode: false,
-    swcMinify: false,
     staticPageGenerationTimeout: 120,
     experimental: {
-      instrumentationHook: true,
     },
   };
 
