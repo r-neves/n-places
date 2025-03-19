@@ -24,7 +24,7 @@ npm run dev
 - This app envisioned to be managed by a closed group. The app implements Google SSO to check if the email is authorized to manage app internals such as editing ratings. The roles of logged in users are defined in a Notion database as well. If the user is not present in the table, the assigned role by default is `viewer`. Without designs for a login area, at the moment the login button is hidden as a secret click location. Can you find it? 🥚
 
 ## Roadmap
-- ✅ Cache the DB results in Redis by DB last updated timestamp
+✅ Cache the DB results in Redis by DB last updated timestamp
 - [ ] Include filters by different attributes
 - [ ] Support multiple databases to show places aside from restaurants (e.g. bars, shops, etc)
 - [ ] Allow the admin/moderator to edit a place rating
