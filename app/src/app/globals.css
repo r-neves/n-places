@@ -116,6 +116,24 @@ a {
   background-color: salmon;
 }
 
+.maplibregl-ctrl-bottom-right {
+  bottom: 15px !important;
+  right: 5px !important;
+}
+
+.maplibregl-ctrl-group {
+  border-radius: 50% !important;
+}
+
+.maplibregl-ctrl-geolocate {
+  height: 50px !important;
+  width: 50px !important;
+}
+
+.maplibregl-ctrl-icon {
+  background-size: 70% !important;
+}
+
 /* @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
