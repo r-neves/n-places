@@ -23,26 +23,26 @@
     "@vercel/kv": "^2.0.0",
     "@vercel/speed-insights": "^1.0.12",
     "maplibre-gl": "^3.6.2",
-    "next": "15.2.3",
+    "next": "15.3.2",
     "next-auth": "^4.24.8",
     "node-html-parser": "^6.1.12",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "stream": "^0.0.3"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "19.0.11",
-    "@types/react-dom": "19.0.4",
+    "@types/react": "19.1.4",
+    "@types/react-dom": "19.1.5",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
-    "eslint-config-next": "15.2.3",
+    "eslint-config-next": "15.3.2",
     "postcss": "^8",
     "serwist": "^9.0.9",
     "typescript": "^5"
   },
   "overrides": {
-    "@types/react": "19.0.11",
-    "@types/react-dom": "19.0.4"
+    "@types/react": "19.1.4",
+    "@types/react-dom": "19.1.5"
   }
 }
