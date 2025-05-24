@@ -48,7 +48,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-    //themeColor: "#fac3b8",
+    themeColor: "transparent",
 };
 
 const inter = Inter({ subsets: ["latin"] });
