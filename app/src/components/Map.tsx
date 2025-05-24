@@ -632,7 +632,6 @@ export default function MapComponent() {
 
     return (
         <div>
-            <h1>This is a test</h1>
             <Loading isMapLoaded={mapLoaded} />
             <SearchBar
                 isMapLoaded={mapLoaded}
