@@ -92,7 +92,7 @@ body {
 
 body {
   color: rgb(var(--foreground-rgb));
-  background-color: transparent;
+  background-color: green;
 }
 
 a {
