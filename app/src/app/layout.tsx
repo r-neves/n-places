@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     description: APP_DESCRIPTION,
     appleWebApp: {
         capable: true,
-        statusBarStyle: "default",
+        statusBarStyle: "black-translucent",
         title: APP_DEFAULT_TITLE,
         startupImage: {
             url: "/512px_map_logo_1.jpeg",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-    themeColor: "#fac3b8",
+    //themeColor: "#fac3b8",
 };
 
 const inter = Inter({ subsets: ["latin"] });
