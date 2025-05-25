@@ -85,6 +85,7 @@
 
 @media (width <= 800px) {
     .searchWrapper {
+        top: 10px;
         justify-content: center;
         left: 0;
     }
