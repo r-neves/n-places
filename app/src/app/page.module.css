@@ -1,17 +1,9 @@
-.title {
-  top: -30px;
-  left: 0;
-  position: absolute;
-  padding-top: env(safe-area-inset-top);
-}
-
 .main {
-  display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
   padding-top: env(safe-area-inset-top);
+  overflow: hidden;
 }
 
 .description {
