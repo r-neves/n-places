@@ -4,7 +4,7 @@
     position: absolute !important;
     top: -20px;
     left: 0;
-    padding-top: env(safe-area-inset-top);
+    /*padding-top: env(safe-area-inset-top);*/
 }
 
 .mapContainer {
