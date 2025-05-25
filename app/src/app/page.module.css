@@ -1,5 +1,5 @@
 .title {
-  top: 0;
+  top: -10px;
   left: 0;
   position: absolute;
   padding-top: env(safe-area-inset-top);
