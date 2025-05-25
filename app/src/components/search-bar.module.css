@@ -1,5 +1,6 @@
 .searchWrapper {
     position: absolute;
+    padding-top: env(safe-area-inset-top);
     top: 20px;
     left: 20px;
     display: flex;
