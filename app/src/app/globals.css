@@ -112,7 +112,7 @@ a {
 }
 
 .maplibregl-ctrl-bottom-right {
-  bottom: 25px !important;
+  bottom: 5% !important;
   right: 5px !important;
 }
 
