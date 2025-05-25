@@ -631,7 +631,7 @@ export default function MapComponent() {
     }, [userRole, mapLoaded]);
 
     return (
-        <div>
+        <div className={styles.mapContainer}>
             <Loading isMapLoaded={mapLoaded} />
             <SearchBar
                 isMapLoaded={mapLoaded}
