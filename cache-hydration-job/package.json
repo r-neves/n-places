@@ -1,0 +1,19 @@
+{
+  "name": "cache-hydration-job",
+  "version": "1.0.0",
+  "description": "Updates the n-places cache based on a cron schedule",
+  "main": "index.ts",
+  "scripts": {
+    "start": "node -r ts-node/register --env-file=.env index.ts",
+    "test": "echo \"Error: no test tool exists\" && exit 1"
+  },
+  "author": "r-neves",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "devDependencies": {
+    "@types/node": "^24.0.13",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "ts-node": "^10.9.2"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "shared",
+  "version": "1.0.0",
+  "description": "Shared library for n-places app and other components",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "r-neves",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "dependencies": {
+    "@vercel/kv": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.13"
+  }
+}
