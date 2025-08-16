@@ -9,7 +9,14 @@ module.exports = async (phase) => {
   const nextConfig = {
     reactStrictMode: false,
     staticPageGenerationTimeout: 120,
-    experimental: {
+    webpack: (config, { isServer }) => {
+      if (!isServer) {
+        config.resolve.fallback = {
+          // Disable the 'tls' module on the client side
+          tls: false,
+        };
+      }
+      return config;
     },
   };
 
