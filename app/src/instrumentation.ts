@@ -1,25 +1,26 @@
-export async function register() {
-    if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.NODE_ENV === "development") {
-        // Imports are done inside the function because not all of them are available when
-        // compiling the app initially, causing errors at compile time.
-        const { NodeSDK } = await import("@opentelemetry/sdk-node");
-        const { OTLPTraceExporter } = await import("@opentelemetry/exporter-trace-otlp-http");
-        const { Resource } = await import("@opentelemetry/resources");
-        const { ATTR_SERVICE_NAME } = await import("@opentelemetry/semantic-conventions");
-        const { SimpleSpanProcessor } = await import("@opentelemetry/sdk-trace-node");
-        
-        
-        const sdk = new NodeSDK({
-            resource: new Resource({
-                [ATTR_SERVICE_NAME]: "n-places",
-            }),
-            spanProcessor: new SimpleSpanProcessor(new OTLPTraceExporter(
-                {
-                    url: "http://localhost:4318/v1/traces",
-                }
-            )),
-        });
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node';
+import { registerOTel } from '@vercel/otel';
 
-        sdk.start();
+export function register() {
+    console.log('Registering OpenTelemetry');
+    if (!process.env.AXIOM_DOMAIN || !process.env.AXIOM_API_TOKEN || !process.env.AXIOM_DATASET_NAME) {
+        console.warn('Missing required environment variables to register OpenTelemetry');
+        return;
     }
+
+    registerOTel({
+        serviceName: 'nextjs-app',
+        spanProcessors: [
+            new SimpleSpanProcessor(
+                new OTLPTraceExporter({
+                    url: `https://${process.env.AXIOM_DOMAIN}/v1/traces`,
+                    headers: {
+                        Authorization: `Bearer ${process.env.AXIOM_API_TOKEN}`,
+                        'X-Axiom-Dataset': `${process.env.AXIOM_DATASET_NAME}`,
+                    },
+                })
+            )
+        ],
+    });
 }
