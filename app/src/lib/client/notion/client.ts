@@ -97,7 +97,7 @@ export default class NotionAPIClient {
         databaseID: string
     ): Promise<RepoDatabaseSchema> {
         const request = new Request(
-            `${NOTION_API_URL}/databases/${databaseID}`,
+            `${NOTION_API_URL}/data_sources/${databaseID}`,
             {
                 headers: {
                     Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
@@ -122,7 +122,7 @@ async function getUserRole(databaseID: string, email: string): Promise<string> {
     }
 
     const request = new Request(
-        `${NOTION_API_URL}/databases/${databaseID}/query`,
+        `${NOTION_API_URL}/data_sources/${databaseID}/query`,
         {
             cache: "no-store",
             method: "POST",
@@ -161,7 +161,7 @@ async function getUserRole(databaseID: string, email: string): Promise<string> {
 
 async function fetchDBLastUpdatedDate(databaseID: string): Promise<Date> {
     const request = new Request(
-        `${NOTION_API_URL}/databases/${databaseID}/query`,
+        `${NOTION_API_URL}/data_sources/${databaseID}/query`,
         {
             cache: "no-store",
             method: "POST",
@@ -376,7 +376,7 @@ function buildDatabasePOSTRequest(
         body!.start_cursor = start_cursor;
     }
 
-    return new Request(`${NOTION_API_URL}/databases/${databaseID}/query`, {
+    return new Request(`${NOTION_API_URL}/data_sources/${databaseID}/query`, {
         method: "POST",
         headers: {
             Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
