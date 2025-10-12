@@ -10,21 +10,21 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
     constructor() {}
     async getRestaurant(id: string): Promise<RepoRestaurant | null> {
         return await NotionAPIClient.getCachedPlace(
-            process.env.RESTAURANTS_DB_ID!,
+            process.env.RESTAURANTS_DATA_SOURCE_ID!,
             id
         );
     }
 
     async getDBLastUpdatedDate(): Promise<Date> {
         return await NotionAPIClient.getDBLastUpdatedDate(
-            process.env.RESTAURANTS_DB_ID!
+            process.env.RESTAURANTS_DATA_SOURCE_ID!
         );
     }
 
     async getRestaurants(lastModifiedDate: Date): Promise<RepoRestaurant[]> {
         const restaurants: RepoRestaurant[] =
             await NotionAPIClient.getPlacesForDBAfterModifiedDate(
-                process.env.RESTAURANTS_DB_ID!,
+                process.env.RESTAURANTS_DATA_SOURCE_ID!,
                 lastModifiedDate
             );
 
@@ -54,7 +54,7 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 
                 rowMetadataUpdatePromises.push(
                     NotionAPIClient.patchPlaceMetadata(
-                        process.env.RESTAURANTS_DB_ID!,
+                        process.env.RESTAURANTS_DATA_SOURCE_ID!,
                         restaurants[c.index].id,
                         metadata
                     )
@@ -108,7 +108,7 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
         ratingID: string,
     ): Promise<void> {
         await NotionAPIClient.patchPlaceRating(
-            process.env.RESTAURANTS_DB_ID!,
+            process.env.RESTAURANTS_DATA_SOURCE_ID!,
             placeID,
             propertyID,
             ratingID,
@@ -117,7 +117,7 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 
     async getDatabaseSchema() {
         return await NotionAPIClient.getDatabaseSchema(
-            process.env.RESTAURANTS_DB_ID!
+            process.env.RESTAURANTS_DATA_SOURCE_ID!
         );
     }
 }
