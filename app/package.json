@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "jest"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.5",
@@ -32,6 +33,8 @@
     "stream": "^0.0.3"
   },
   "devDependencies": {
+    "@babel/preset-typescript": "^7.28.5",
+    "@jest/globals": "^29.7.0",
     "@types/node": "^20",
     "@types/react": "19.1.4",
     "@types/react-dom": "19.1.5",
@@ -40,6 +43,7 @@
     "eslint-config-next": "15.3.2",
     "postcss": "^8",
     "serwist": "^9.0.9",
+    "ts-jest": "^29.4.5",
     "typescript": "^5"
   },
   "overrides": {
