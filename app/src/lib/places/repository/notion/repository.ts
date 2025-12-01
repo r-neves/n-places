@@ -5,6 +5,7 @@ import {
     RestaurantsRepository,
 } from "../interface";
 import NotionAPIClient from "../../../client/notion/client";
+import {getCoordinatesFromMapsUrl} from "../../../util/coordinates";
 
 export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
     constructor() {}
@@ -36,7 +37,7 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
         for (let i = 0; i < restaurants.length; i++) {
             if (restaurants[i].hasFaultyMetadata) {
                 coordinatePromises.push(
-                    this.getCoordinatesFromMapsUrl(i, restaurants[i].mapsUrl)
+                    getCoordinatesFromMapsUrl(i, restaurants[i].mapsUrl)
                 );
             }
         }
@@ -73,33 +74,6 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
         }
 
         return restaurants;
-    }
-
-    async getCoordinatesFromMapsUrl(
-        index: number,
-        mapsUrl: string
-    ): Promise<{ index: number; latitude: number; longitude: number }> {
-        return await fetch(mapsUrl)
-            .then((response) => response.text())
-            .then((text) => {
-                const doc = parse(text).toString();
-                const mapsLinkIndex = doc.search(
-                    "https://www.google.com/maps/place/"
-                );
-                const subString = doc.substring(mapsLinkIndex);
-                const coordinatesBeginIndex = subString.indexOf("@") + 1;
-                const includedCoordinates = subString
-                    .substring(
-                        coordinatesBeginIndex,
-                        coordinatesBeginIndex + 30
-                    )
-                    .split(",");
-                return {
-                    index: index,
-                    latitude: parseFloat(includedCoordinates[0]),
-                    longitude: parseFloat(includedCoordinates[1]),
-                };
-            });
     }
 
     async editRating(
