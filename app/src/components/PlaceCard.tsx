@@ -2,7 +2,7 @@ import { Restaurant } from "@/lib/places/domain/restaurant";
 import styles from "./placeCard.module.css";
 import { UserRole } from "@/lib/constants/enums";
 import { PriceMap, RatingMap, RestaurantTypeMap } from "./restaurant-items";
-import { JSX } from "react";
+import { JSX, RefObject } from "react";
 import { EditIcon, GoogleMapsMarker } from "@/lib/constants/svg";
 
 export default function PlaceCard({
@@ -10,7 +10,7 @@ export default function PlaceCard({
     userRole,
 }: {
     place: Restaurant | null;
-    userRole: string;
+    userRole: RefObject<string>;
 }) {
     if (place === null) {
         return null;
@@ -90,7 +90,7 @@ export default function PlaceCard({
         <div className={styles.placeCard}>
             <div className={styles.spacedRow}>
                 <h2>{place.name}</h2>
-                {userRole === UserRole.ADMIN && (
+                {userRole.current === UserRole.ADMIN && (
                     <button
                         className={styles.editBtn}
                         onClick={() => {
@@ -123,7 +123,7 @@ export default function PlaceCard({
                         </p>
                     </div>
                 </div>
-                {userRole === UserRole.ADMIN && place.recommender !== "" && (
+                {userRole.current === UserRole.ADMIN && place.recommender !== "" && (
                     <div className={styles.column}>
                         <p className={styles.caption}>Recommender</p>
                         <p className={styles.body}>{place.recommender}</p>

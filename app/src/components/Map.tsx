@@ -7,7 +7,6 @@ import {
     GeolocateControl,
     MapMouseEvent,
     MapGeoJSONFeature,
-    Popup,
     SourceSpecification,
     FilterSpecification,
     ExpressionSpecification,
@@ -39,7 +38,7 @@ export default function MapComponent() {
     let [mapLoaded, setMapLoaded] = useState(false);
     let [searchItems, setSearchItems] = useState<SearchItem[]>([]);
     let [isHiddenPopupVisible, setIsHiddenPopupVisible] = useState(false);
-    let [userRole, setUserRole] = useState("");
+    let userRole = useRef("");
     let [selectedPlace, setSelectedPlace] = useState<Restaurant | null>(null);
     let currentFilter = useRef<ExpressionSpecification>(ALL_FILTER);
     const map = useRef<MapGL>(undefined);
@@ -94,6 +93,7 @@ export default function MapComponent() {
                             name: entry.name,
                             visited: entry.visited,
                             rating: entry.rating,
+                            recommender: entry.recommender,
                             tags: entry.tags
                                 .map(
                                     (t: { tag: string; color: string }) => t.tag
@@ -438,6 +438,7 @@ export default function MapComponent() {
 
         const places = new Set<string>();
         const locations = new Set<string>();
+        const recommenders = new Set<string>();
 
         for (const restaurant of restaurants) {
             if (places.has(restaurant.mapsUrl)) {
@@ -522,6 +523,24 @@ export default function MapComponent() {
                     });
                 },
             });
+
+            if (userRole.current === UserRole.ADMIN && restaurant.recommender !== "" && !recommenders.has(restaurant.recommender)) {
+                recommenders.add(restaurant.recommender);
+
+                items.push({
+                    label: restaurant.recommender,
+                    type: "recommender",
+                    clickHandler: () => {
+                        const recommenderFilter: FilterSpecification = ["==", ["get", "recommender"], restaurant.recommender];
+                        currentFilter.current = recommenderFilter;
+
+                        for (const t in RestaurantTypeMap) {
+                            map.current?.setFilter(t, recommenderFilter);
+                            map.current?.setFilter(`${t}-name`, recommenderFilter);
+                        }
+                    },
+                });
+            }
         }
 
         setSearchItems(items);
@@ -607,7 +626,7 @@ export default function MapComponent() {
                 body: JSON.stringify({ email: session.user.email }),
             }).then((response) => response.json());
 
-            setUserRole(response === "" ? UserRole.VIEWER : response);
+            userRole.current = response === "" ? UserRole.VIEWER : response;
         };
 
         updateUserRole();
