@@ -5,7 +5,7 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "https://tiles2.intermodal.pt/data/v3.json"
+      "url": "https://api.maptiler.com/tiles/v3-openmaptiles/tiles.json?key=MAPTILER_API_KEY_PLACEHOLDER"
     }
   },
   "sprite": "https://tiles2.intermodal.pt/styles/iml/sprite",

@@ -1,6 +1,8 @@
 "use client";
 
 import styles from "./map.module.css";
+import mapStyleJson from "../../public/map-style.json";
+import maptilerLogo from "../../public/maptiler-logo.png";
 import { useEffect, useRef, useState } from "react";
 import {
     Map as MapGL,
@@ -10,6 +12,7 @@ import {
     SourceSpecification,
     FilterSpecification,
     ExpressionSpecification,
+    StyleSpecification,
 } from "maplibre-gl";
 import { Restaurant } from "@/lib/places/domain/restaurant";
 import {
@@ -598,10 +601,26 @@ export default function MapComponent() {
                 restaurants.length
             );
 
+            const mapStyle = {
+                ...mapStyleJson,
+                sources: {
+                    ...mapStyleJson.sources,
+                    openmaptiles: {
+                        ...mapStyleJson.sources.openmaptiles,
+                        url: process.env.NEXT_PUBLIC_MAPTILER_API_KEY
+                            ? mapStyleJson.sources.openmaptiles.url.replace(
+                                  "MAPTILER_API_KEY_PLACEHOLDER",
+                                  process.env.NEXT_PUBLIC_MAPTILER_API_KEY
+                              )
+                            : "https://tiles2.intermodal.pt/data/v3.json",
+                    },
+                },
+            };
+
             map.current = new MapGL({
                 attributionControl: false,
                 container: "mapElem",
-                style: "./map-style.json",
+                style: mapStyle as StyleSpecification,
                 center: [-9.10595458097556, 38.77395075041862],
                 zoom: 10,
             });
@@ -645,6 +664,18 @@ export default function MapComponent() {
                 resetFiltersHandler={resetFilters}
             ></SearchBar>
             <div id="mapElem" className={styles.mapCanvas}></div>
+            {process.env.NEXT_PUBLIC_MAPTILER_API_KEY && (
+                <div className={styles.maptilerAttribution}>
+                    <a href="https://www.maptiler.com" target="_blank" rel="noopener noreferrer">
+                        <img src={maptilerLogo.src} alt="MapTiler" />
+                    </a>
+                    <span>
+                        <a href="https://www.maptiler.com/copyright" target="_blank" rel="noopener noreferrer">© MapTiler</a>
+                        {" "}
+                        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>
+                    </span>
+                </div>
+            )}
             <PlaceCard place={selectedPlace} userRole={userRole} />
             <HiddenAdminPopup
                 isVisible={isHiddenPopupVisible}
