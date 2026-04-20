@@ -13,3 +13,31 @@
     top: 0;
     left: 0;
 }
+
+.maptilerAttribution {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    z-index: 1;
+    opacity: 0.9;
+}
+
+.maptilerAttribution img {
+    height: 20px;
+    width: auto;
+    display: block;
+}
+
+.maptilerAttribution span {
+    font-size: 11px;
+    color: #333;
+}
+
+.maptilerAttribution span a {
+    color: #333;
+    text-decoration: none;
+}
+
+.maptilerAttribution span a:hover {
+    text-decoration: underline;
+}
