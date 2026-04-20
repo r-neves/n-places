@@ -9,6 +9,8 @@ import {
     MapGeoJSONFeature,
     Popup,
     SourceSpecification,
+    FilterSpecification,
+    ExpressionSpecification,
 } from "maplibre-gl";
 import { Restaurant } from "@/lib/places/domain/restaurant";
 import {
@@ -30,6 +32,8 @@ const HOME_COORDINATES_LONGITUDE = -9.105364651707808;
 // The PlaceCard height occupies beyond the center of the screen, the flyTo latitude needs to be adjusted
 // so that the map place is still visible when clicked or searched.
 const LATITUDE_OFFSET = 0.0038;
+const ALL_FILTER: ExpressionSpecification = ["!=", ["get", "id"], -1];
+const NONE_FILTER: ExpressionSpecification = ["==", ["get", "id"], -1];
 
 export default function MapComponent() {
     let [mapLoaded, setMapLoaded] = useState(false);
@@ -37,6 +41,7 @@ export default function MapComponent() {
     let [isHiddenPopupVisible, setIsHiddenPopupVisible] = useState(false);
     let [userRole, setUserRole] = useState("");
     let [selectedPlace, setSelectedPlace] = useState<Restaurant | null>(null);
+    let currentFilter = useRef<ExpressionSpecification>(ALL_FILTER);
     const map = useRef<MapGL>(undefined);
     const { data: session, status } = useSession();
 
@@ -270,11 +275,13 @@ export default function MapComponent() {
 
             // Update the selected place
             for (const layer of queryLayers) {
-                map.current?.setFilter(`${layer}`, [
-                    "!=",
-                    ["get", "id"],
-                    placeId,
-                ]);
+                const notSelectedFilter: FilterSpecification = [
+                    "all", 
+                    ["!=", ["get", "id"], placeId], 
+                    currentFilter.current
+                ];
+
+                map.current?.setFilter(`${layer}`, notSelectedFilter);
                 map.current?.setFilter(`${layer}-selected`, [
                     "==",
                     ["get", "id"],
@@ -318,20 +325,11 @@ export default function MapComponent() {
             });
 
             if (!features || !features.length) {
-                // Reset filters to show all features in the normal layer
                 for (const tag in RestaurantTypeMap) {
-                    map.current?.setFilter(`${tag}`, null); // Show all features
-                    map.current?.setFilter(`${tag}-name`, null); // Show all features
-                    map.current?.setFilter(`${tag}-selected`, [
-                        "==",
-                        ["get", "id"],
-                        -1,
-                    ]); // No feature matches -1
-                    map.current?.setFilter(`${tag}-name-selected`, [
-                        "==",
-                        ["get", "id"],
-                        -1,
-                    ]); // No feature matches -1
+                    map.current?.setFilter(`${tag}`, currentFilter.current);
+                    map.current?.setFilter(`${tag}-name`, currentFilter.current);
+                    map.current?.setFilter(`${tag}-selected`, NONE_FILTER);
+                    map.current?.setFilter(`${tag}-name-selected`, NONE_FILTER);
                 }
 
                 setSelectedPlace(null);
@@ -393,13 +391,12 @@ export default function MapComponent() {
             label: "Visited",
             type: "state",
             clickHandler: () => {
+                const visitedFilter: FilterSpecification = ["==", ["get", "visited"], true];
+                currentFilter.current = visitedFilter;
+
                 for (const tag in RestaurantTypeMap) {
-                    map.current?.setFilter(tag, ["==", "visited", true]);
-                    map.current?.setFilter(`${tag}-name`, [
-                        "==",
-                        "visited",
-                        true,
-                    ]);
+                    map.current?.setFilter(tag, visitedFilter);
+                    map.current?.setFilter(`${tag}-name`, visitedFilter);
                 }
             },
         });
@@ -408,13 +405,12 @@ export default function MapComponent() {
             label: "Not Visited",
             type: "state",
             clickHandler: () => {
+                const notVisitedFilter: FilterSpecification = ["==", ["get", "visited"], false];
+                currentFilter.current = notVisitedFilter;
+
                 for (const tag in RestaurantTypeMap) {
-                    map.current?.setFilter(tag, ["==", "visited", false]);
-                    map.current?.setFilter(`${tag}-name`, [
-                        "==",
-                        "visited",
-                        false,
-                    ]);
+                    map.current?.setFilter(tag, notVisitedFilter);
+                    map.current?.setFilter(`${tag}-name`, notVisitedFilter);
                 }
             },
         });
@@ -425,17 +421,16 @@ export default function MapComponent() {
                 label: label,
                 type: "tag",
                 clickHandler: () => {
+                    const tagFilter: FilterSpecification = [
+                        "in",
+                        tag,
+                        ["downcase", ["get", "tags"]],
+                    ];
+                    currentFilter.current = tagFilter;
+
                     for (const t in RestaurantTypeMap) {
-                        map.current?.setFilter(t, [
-                            "in",
-                            tag,
-                            ["downcase", ["get", "tags"]],
-                        ]);
-                        map.current?.setFilter(`${t}-name`, [
-                            "in",
-                            tag,
-                            ["downcase", ["get", "tags"]],
-                        ]);
+                        map.current?.setFilter(t, tagFilter);
+                        map.current?.setFilter(`${t}-name`, tagFilter);
                     }
                 },
             });
@@ -459,17 +454,16 @@ export default function MapComponent() {
                 type: "place",
                 clickHandler: () => {
                     // Update the selected place
+                    const notSelectedFilter: FilterSpecification = [
+                        "!=",
+                        ["get", "id"],
+                        restaurant.id,
+                    ];
+                    currentFilter.current = notSelectedFilter;
+
                     for (const t in RestaurantTypeMap) {
-                        map.current?.setFilter(`${t}`, [
-                            "!=",
-                            ["get", "id"],
-                            restaurant.id,
-                        ]);
-                        map.current?.setFilter(`${t}-name`, [
-                            "!=",
-                            ["get", "id"],
-                            restaurant.id,
-                        ]);
+                        map.current?.setFilter(`${t}`, notSelectedFilter);
+                        map.current?.setFilter(`${t}-name`, notSelectedFilter);
                         map.current?.setFilter(`${t}-selected`, [
                             "==",
                             ["get", "id"],
@@ -535,18 +529,11 @@ export default function MapComponent() {
 
     function resetFilters() {
         for (const tag in RestaurantTypeMap) {
+            currentFilter.current = ALL_FILTER;
             map.current?.setFilter(tag, null);
             map.current?.setFilter(`${tag}-name`, null);
-            map.current?.setFilter(`${tag}-selected`, [
-                "==",
-                ["get", "id"],
-                -1,
-            ]);
-            map.current?.setFilter(`${tag}-name-selected`, [
-                "==",
-                ["get", "id"],
-                -1,
-            ]);
+            map.current?.setFilter(`${tag}-selected`, NONE_FILTER);
+            map.current?.setFilter(`${tag}-name-selected`, NONE_FILTER);
 
             setSelectedPlace(null);
         }
