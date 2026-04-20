@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import styles from "./hidden.module.css";
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, RefObject, SetStateAction } from "react";
 import GoogleSignInButton from "./GoogleSignInButton";
 import SignOutButton from "./SignOutButton";
 import { TrashIcon } from "@/lib/constants/svg";
@@ -15,7 +15,7 @@ export default function HiddenAdminPopup({
 }: {
     isVisible: boolean;
     setIsVisible: Dispatch<SetStateAction<boolean>>;
-    userRole: string;
+    userRole: RefObject<string>;
 }) {
     function handleOverlayClick(event: React.MouseEvent<HTMLDivElement>) {
         if (event.target !== event.currentTarget) {
@@ -42,11 +42,11 @@ export default function HiddenAdminPopup({
                     <br />
                     <p>
                         Your role is{" "}
-                        <span className={`${styles.role} ${userRole}`}>
-                            {userRole}
+                        <span className={`${styles.role} ${userRole.current}`}>
+                            {userRole.current}
                         </span>
                     </p>
-                    {userRole === UserRole.ADMIN && (
+                    {userRole.current === UserRole.ADMIN && (
                         <button
                             className={styles.wipeCacheButton}
                             onClick={async () =>
