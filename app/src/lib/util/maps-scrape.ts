@@ -17,6 +17,7 @@ export type FieldSource =
     | "og:title"
     | "place-url"
     | "final-url"
+    | "blob"
     | "app-init-state"
     | null;
 
@@ -70,6 +71,17 @@ const PLACE_URL_PATTERN =
 // Note the ordering: longitude comes before latitude.
 const APP_INIT_STATE_PATTERN =
     /APP_INITIALIZATION_STATE=\[\[\[-?[\d.]+,(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/;
+
+// Inside the page's JS blob the place name appears as a quoted string immediately before its
+// own [<altitude>,<longitude>,<latitude>] triple:
+//     \"Restaurante Clube 1886\",[[3102.64,-8.9910923,38.9549507],null,...
+//
+// This matters because it is the only name source that survives the leaner page Google serves
+// to a datacenter IP: production saw sources={"name":null,"coordinates":"app-init-state"},
+// meaning the response had no canonical /maps/place/ URL and no usable og:title, but the blob
+// was present and parsing.
+const BLOB_PLACE_PATTERN =
+    /\\"([^"\\]{2,120})\\",\[\[-?[\d.]+,(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)\]/;
 
 // Google serves this as the og:title for pages that aren't a specific place.
 const GENERIC_TITLE = "google maps";
@@ -189,6 +201,46 @@ export function parsePlaceUrl(text: string): {
     };
 }
 
+export function parseBlobPlace(html: string): {
+    name: string;
+    address: string | null;
+    latitude: number;
+    longitude: number;
+} | null {
+    const match = html.match(BLOB_PLACE_PATTERN);
+    if (match === null) {
+        return null;
+    }
+
+    const label = match[1].trim();
+    const longitude = parseFloat(match[2]);
+    const latitude = parseFloat(match[3]);
+
+    if (label.length === 0 || !isValidCoordinate(latitude, longitude)) {
+        return null;
+    }
+
+    // The label is sometimes just the name ("Xiaolongkan Hot Pot") and sometimes name plus
+    // address ("Lupita Pizzaria Alvalade, Av. da Igreja 15D, 1700-237 Lisboa"), so it is split
+    // on the first ", " exactly as the place-URL segment is.
+    const separatorIndex = label.indexOf(", ");
+    if (separatorIndex === -1) {
+        return {
+            name: label,
+            address: null,
+            latitude: latitude,
+            longitude: longitude,
+        };
+    }
+
+    return {
+        name: label.substring(0, separatorIndex).trim(),
+        address: label.substring(separatorIndex + 2).trim() || null,
+        latitude: latitude,
+        longitude: longitude,
+    };
+}
+
 export function parseAppInitState(
     html: string
 ): { latitude: number; longitude: number } | null {
@@ -221,6 +273,7 @@ export function parseGoogleMapsHtml(
     const ogTitle = parseOgTitle(html);
     const fromFinalUrl = finalUrl ? parsePlaceUrl(finalUrl) : null;
     const fromHtml = parsePlaceUrl(html);
+    const fromBlob = parseBlobPlace(html);
     const fromAppInit = parseAppInitState(html);
 
     // Name and address both come from og:title first: it separates the two with an explicit
@@ -245,6 +298,11 @@ export function parseGoogleMapsHtml(
         result.sources.name = "place-url";
     }
 
+    if (result.name === null && fromBlob !== null) {
+        result.name = fromBlob.name;
+        result.sources.name = "blob";
+    }
+
     if (
         result.address === null &&
         fromFinalUrl !== null &&
@@ -259,6 +317,11 @@ export function parseGoogleMapsHtml(
         result.sources.address = "place-url";
     }
 
+    if (result.address === null && fromBlob !== null && fromBlob.address !== null) {
+        result.address = fromBlob.address;
+        result.sources.address = "blob";
+    }
+
     // Coordinates prefer the resolved URL, which is the canonical place permalink.
     if (fromFinalUrl !== null) {
         result.latitude = fromFinalUrl.latitude;
@@ -268,6 +331,12 @@ export function parseGoogleMapsHtml(
         result.latitude = fromHtml.latitude;
         result.longitude = fromHtml.longitude;
         result.sources.coordinates = "place-url";
+    } else if (fromBlob !== null) {
+        // Preferred over app-init-state: the blob triple belongs to the place itself, whereas
+        // APP_INITIALIZATION_STATE's leading triple is the map viewport centre.
+        result.latitude = fromBlob.latitude;
+        result.longitude = fromBlob.longitude;
+        result.sources.coordinates = "blob";
     } else if (fromAppInit !== null) {
         result.latitude = fromAppInit.latitude;
         result.longitude = fromAppInit.longitude;
