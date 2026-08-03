@@ -4,6 +4,7 @@ import * as path from "path";
 import {
     isValidCoordinate,
     parseAppInitState,
+    parseBlobPlace,
     parseGoogleMapsHtml,
     parseOgTitle,
     parsePlaceUrl,
@@ -185,6 +186,52 @@ describe("parsePlaceUrl", () => {
         expect(parsePlaceUrl("https://example.com/nothing")).toBeNull();
         expect(parsePlaceUrl("/maps/place/A/@0.0,0.0")).toBeNull();
         expect(parsePlaceUrl("/maps/place/A/@999.0,2.5")).toBeNull();
+    });
+});
+
+describe("parseBlobPlace", () => {
+    test("reads the name and coordinates out of the JS blob", () => {
+        const result = parseBlobPlace(FIXTURE);
+
+        expect(result).not.toBeNull();
+        expect(result!.name).toBe(EXPECTED_NAME);
+        expect(result!.address).toBeNull();
+        expect(result!.latitude).toBeCloseTo(EXPECTED_LATITUDE, 5);
+        expect(result!.longitude).toBeCloseTo(EXPECTED_LONGITUDE, 5);
+    });
+
+    // Observed live: the blob label is sometimes "<name>, <address>" rather than just the name,
+    // which is currently the only place an address is available at all.
+    test("splits a label that carries the address too", () => {
+        const result = parseBlobPlace(
+            'x\\"Lupita Pizzaria Alvalade, Av. da Igreja 15D, 1700-237 Lisboa\\",[[3102.64,-9.0472448,38.8923392]'
+        );
+
+        expect(result!.name).toBe("Lupita Pizzaria Alvalade");
+        expect(result!.address).toBe("Av. da Igreja 15D, 1700-237 Lisboa");
+    });
+
+    test("returns null when the blob is absent or the coordinates are unusable", () => {
+        expect(parseBlobPlace("<html></html>")).toBeNull();
+        expect(parseBlobPlace('x \\"Somewhere\\",[[10.0,0.0,0.0] y')).toBeNull();
+    });
+
+    // The page Google serves to a datacenter IP has no canonical /maps/place/ URL and no usable
+    // og:title, so the blob is the only thing left carrying the name. Production hit exactly
+    // this: sources={"name":null,"coordinates":"app-init-state"}.
+    test("supplies the name when no place URL or og:title is available", () => {
+        const leanPage =
+            '<meta content="Google Maps" property="og:title">' +
+            'window.APP_INITIALIZATION_STATE=[[[12443.39,-9.0991259,38.767198],null];' +
+            'x\\"Xiaolongkan Hot Pot\\",[[3102.64,-9.0991259,38.767198],null,[1024,768],13.1]';
+
+        const result = parseGoogleMapsHtml(leanPage);
+
+        expect(result.name).toBe("Xiaolongkan Hot Pot");
+        expect(result.sources.name).toBe("blob");
+        expect(result.latitude).toBeCloseTo(38.767198, 5);
+        // The place's own triple beats the viewport centre from APP_INITIALIZATION_STATE.
+        expect(result.sources.coordinates).toBe("blob");
     });
 });
 
