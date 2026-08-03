@@ -61,22 +61,6 @@
     font-weight: 500;
 }
 
-/* The cuisine chips carry the same icon the map markers use, so picking a type here previews
-   what the pin will look like. */
-.iconChip {
-    padding: 6px 14px 6px 8px;
-}
-
-.chipIcon {
-    width: 26px;
-    height: 26px;
-    object-fit: contain;
-}
-
-.chipLabel {
-    text-transform: capitalize;
-}
-
 /* Ambience has no icon map of its own, so it reuses PlaceCard's ambience pill colours. */
 .ambienceChip {
     background-color: #e8cead;

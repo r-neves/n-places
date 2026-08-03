@@ -1,0 +1,201 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* The open panel anchors to this, not to .container, so the selected chips rendering below do
+   not shift the list while you are still picking from it. */
+.triggerWrap {
+    position: relative;
+}
+
+.trigger {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    background-color: #ffffff;
+    /* Matches the text inputs: never below 16px or iOS Safari zooms on focus. */
+    font-size: 16px;
+    font-family: inherit;
+    font-weight: 300;
+    text-align: left;
+    cursor: pointer;
+}
+
+.triggerLabel {
+    color: #333333;
+}
+
+.triggerPlaceholder {
+    color: #cac9c9;
+}
+
+.chevron {
+    color: #616161;
+    font-size: 14px;
+    line-height: 1;
+    transition: transform 150ms ease;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+.panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 4;
+    /* Roughly six rows before scrolling — enough to feel like a list, short enough that the
+       fields below stay reachable. */
+    max-height: 264px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background-color: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 4px;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: #333333;
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: 300;
+    text-align: left;
+    cursor: pointer;
+}
+
+.rowSelected {
+    background-color: #f7f7f7;
+    font-weight: 400;
+}
+
+.rowIcon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+
+.rowLabel {
+    flex: 1 1 auto;
+    text-transform: capitalize;
+}
+
+.mainTag {
+    flex: 0 0 auto;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 30px;
+    background-color: #f3f4f6;
+    color: #616161;
+    white-space: nowrap;
+}
+
+.check {
+    flex: 0 0 auto;
+    width: 14px;
+    font-size: 14px;
+    line-height: 1;
+    text-align: center;
+}
+
+.selectedRow {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+/* Deliberately the same 30px-radius white-on-colour pill PlaceCard uses for types, so what is
+   picked here previews how it will read on the place card. */
+.chip {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px 3px 9px;
+    border-radius: 30px;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.pin {
+    font-size: 11px;
+    line-height: 1;
+}
+
+.chipLabel {
+    text-transform: capitalize;
+}
+
+.promoteBtn,
+.removeBtn {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-family: inherit;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.promoteBtn {
+    font-size: 14px;
+    text-transform: capitalize;
+}
+
+.removeBtn {
+    font-size: 12px;
+    opacity: 0.75;
+    padding-left: 1px;
+}
+
+.hint {
+    font-size: 13px;
+    color: #616161;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .trigger:hover {
+        border-color: #cac9c9;
+    }
+
+    .row:hover {
+        background-color: #f3f4f6;
+    }
+
+    .promoteBtn:hover,
+    .removeBtn:hover {
+        opacity: 0.7;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chevron {
+        transition: none;
+    }
+}

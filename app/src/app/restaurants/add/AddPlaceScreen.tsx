@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import styles from "./add-place.module.css";
-import TypeChips from "@/components/addPlace/TypeChips";
+import TypeSelect from "@/components/addPlace/TypeSelect";
 import OptionChips from "@/components/addPlace/OptionChips";
 import { UserRole } from "@/lib/constants/enums";
 import { GoogleMapsMarker } from "@/lib/constants/svg";
@@ -880,10 +880,10 @@ export default function AddPlaceScreen() {
             {typeOptions.length > 0 && (
                 <div className={styles.field}>
                     <span className={styles.caption}>Type</span>
-                    <TypeChips
+                    <TypeSelect
                         options={typeOptions}
                         selected={tags}
-                        onToggle={(option) => toggle(option, tags, setTags)}
+                        onChange={setTags}
                     />
                 </div>
             )}
