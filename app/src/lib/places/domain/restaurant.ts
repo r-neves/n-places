@@ -21,21 +21,45 @@ export interface RestaurantMetadata {
 	};
 }
 
+export interface SchemaOption {
+	id: string;
+	color: string;
+	name: string;
+}
+
 export interface DatabaseSchema {
 	properties: {
 		[key: string]: {
 			id: string;
 			type: string;
 			name: string;
+			// Notion returns these as arrays. `status` was previously typed as an object map,
+			// but every consumer indexes it numerically (see editRating's options[0] and
+			// options.slice(1, 6)), so an array is what it has always actually been.
 			status?: {
-				options?: {
-					[key: string]: {
-						id: string;
-						color: string;
-						name: string;
-					};
-				};
+				options?: SchemaOption[];
+			};
+			multi_select?: {
+				options?: SchemaOption[];
+			};
+			select?: {
+				options?: SchemaOption[];
 			};
 		};
 	};
+}
+
+// The fields needed to create a place. Separate from Restaurant because a new page has no id
+// yet, and because the select/multi-select values are plain option names on the way in.
+export interface NewRestaurant {
+	name: string;
+	mapsUrl: string;
+	location: string;
+	rating: string;
+	dishPrice: string;
+	tags: string[];
+	ambience: string[];
+	recommender: string;
+	description: string;
+	metadata: RestaurantMetadata | null;
 }

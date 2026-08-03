@@ -1,0 +1,524 @@
+/* Add Place screen.
+   Built from the same vocabulary as PlaceCard — salmon page, white sheet with 24px top radii,
+   uppercase 13px captions, 30px-radius pills, black primary button — so it reads as part of the
+   app rather than a form bolted on. Mobile-first: the base styles are the phone layout and the
+   desktop rule below is the exception, matching the rest of the codebase. */
+
+.page {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-color: #fac3b8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #333333;
+    font-weight: 300;
+}
+
+.topBar {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    /* layout.tsx already sets viewport-fit: cover, so the notch has to be accounted for. */
+    padding-top: calc(12px + env(safe-area-inset-top));
+    box-sizing: border-box;
+}
+
+.topBarTitle {
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+}
+
+.closeBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.55);
+    color: #333333;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+/* Balances the close button so the title stays optically centred. */
+.topBarSpacer {
+    width: 32px;
+}
+
+.sheet {
+    width: 100%;
+    flex: 1;
+    background-color: #ffffff;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding: 20px 15px;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.hero {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #f1f1f1;
+}
+
+.heroName {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.heroAddress {
+    font-size: 14px;
+    color: #616161;
+}
+
+.heroSource {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #616161;
+    padding-top: 4px;
+}
+
+.heroSource svg {
+    width: 14px;
+    height: 14px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.captionRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.caption {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #333333;
+}
+
+.input,
+.textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    background-color: #ffffff;
+    color: #333333;
+    /* Never below 16px: anything smaller makes iOS Safari zoom in on focus. */
+    font-size: 16px;
+    font-family: inherit;
+    font-weight: 300;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+    color: #cac9c9;
+}
+
+.input:focus,
+.textarea:focus {
+    outline: none;
+    border-color: #333333;
+}
+
+.textarea {
+    resize: none;
+    overflow: hidden;
+    line-height: 1.4;
+}
+
+.inputMissing {
+    border-color: #f0c165;
+}
+
+/* Marks a value that came from the shared link rather than being typed. Disappears on edit. */
+.autoBadge {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 30px;
+    background-color: #eaf5f0;
+    color: #4fa77d;
+    white-space: nowrap;
+}
+
+.missingBadge {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 30px;
+    background-color: #f0c165;
+    color: #333333;
+    white-space: nowrap;
+}
+
+.hint {
+    font-size: 13px;
+    color: #616161;
+}
+
+/* One-tap shortening of a scraped street address down to the neighbourhood form the rest of the
+   database uses ("Parque das Nações, Lisboa"). */
+.suggestionRow {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.suggestion {
+    padding: 5px 12px;
+    border-radius: 30px;
+    border: 1px dashed #cac9c9;
+    background: none;
+    color: #616161;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.banner {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.bannerWarn {
+    background-color: #fdf3e0;
+    border-left: 3px solid #f0c165;
+    color: #333333;
+}
+
+.bannerError {
+    background-color: #fdecec;
+    border-left: 3px solid #eb5757;
+    color: #333333;
+}
+
+.bannerDismiss {
+    border: 0;
+    background: none;
+    color: #616161;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+}
+
+.bannerActions {
+    display: flex;
+    gap: 10px;
+    padding-top: 8px;
+}
+
+.linkBtn {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: #333333;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.advanced {
+    border-top: 1px solid #f1f1f1;
+    padding-top: 14px;
+}
+
+.advanced summary {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.advanced summary::-webkit-details-marker {
+    display: none;
+}
+
+.summaryValue {
+    font-size: 13px;
+    letter-spacing: normal;
+    text-transform: none;
+    color: #616161;
+    font-variant-numeric: tabular-nums;
+}
+
+.advancedBody {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-top: 14px;
+}
+
+.coordRow {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.coordRow > * {
+    flex: 1;
+    min-width: 0;
+}
+
+.secondaryBtn {
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: 0;
+    background-color: #f3f4f6;
+    color: #333333;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.secondaryBtn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.saveBar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 15px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid #f1f1f1;
+    z-index: 3;
+}
+
+.saveBtn {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 0;
+    background-color: black;
+    color: #ffffff;
+    font-weight: 500;
+    font-size: 16px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.saveBtn:disabled {
+    background-color: #cac9c9;
+    cursor: default;
+}
+
+.busy {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.spinner {
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        #f3f4f6 25%,
+        #e9eaec 37%,
+        #f3f4f6 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+    border-radius: 8px;
+}
+
+@keyframes shimmer {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: 0 0;
+    }
+}
+
+.skeletonTitle {
+    height: 24px;
+    width: 65%;
+}
+
+.skeletonLine {
+    height: 15px;
+    width: 45%;
+}
+
+.skeletonInput {
+    height: 43px;
+    width: 100%;
+}
+
+.statusLine {
+    font-size: 13px;
+    color: #616161;
+}
+
+/* Centred single-purpose states: no link yet, not an admin, saved. */
+.centered {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+    padding: 30px 10px;
+}
+
+.centered h2 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.centeredBody {
+    font-size: 14px;
+    color: #616161;
+    line-height: 1.5;
+    max-width: 320px;
+}
+
+.pasteActions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 340px;
+}
+
+.errorText {
+    font-size: 13px;
+    color: #eb5757;
+}
+
+.successMark {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background-color: #4fa77d;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    animation: pop 220ms ease-out;
+}
+
+@keyframes pop {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.rolePill {
+    padding: 3px 12px;
+    border-radius: 30px;
+    font-size: 13px;
+    text-transform: capitalize;
+}
+
+@media (width > 800px) {
+    .sheet {
+        width: 600px;
+        flex: 0 1 auto;
+        margin-bottom: 24px;
+        border-radius: 24px;
+        padding-bottom: 20px;
+    }
+
+    .topBar {
+        width: 600px;
+    }
+
+    /* On desktop there is no home indicator to clear and plenty of room, so the action moves
+       back into the sheet instead of floating over it. */
+    .saveBar {
+        position: static;
+        width: 600px;
+        background: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-top: 0;
+        padding: 0 15px 24px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton,
+    .spinner,
+    .successMark {
+        animation: none;
+    }
+}

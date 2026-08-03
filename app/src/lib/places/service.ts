@@ -1,4 +1,4 @@
-import { DatabaseSchema, Restaurant } from "./domain/restaurant";
+import { DatabaseSchema, NewRestaurant, Restaurant } from "./domain/restaurant";
 import { RestaurantsRepository } from "./repository/interface";
 
 export interface RestaurantsService {
@@ -7,6 +7,8 @@ export interface RestaurantsService {
     getDBLastUpdatedDate(): Promise<Date>;
     editRating(placeID: string, propertyID: string, ratingID: string): Promise<void>;
     getDatabaseSchema(): Promise<DatabaseSchema>;
+    createRestaurant(place: NewRestaurant): Promise<Restaurant>;
+    findByMapsUrl(mapsUrl: string): Promise<Restaurant | null>;
 }
 
 export class RestaurantsImpl implements RestaurantsService {
@@ -34,5 +36,13 @@ export class RestaurantsImpl implements RestaurantsService {
 
     async getDatabaseSchema(): Promise<DatabaseSchema> {
         return this.repository.getDatabaseSchema();
+    }
+
+    async createRestaurant(place: NewRestaurant): Promise<Restaurant> {
+        return this.repository.createRestaurant(place);
+    }
+
+    async findByMapsUrl(mapsUrl: string): Promise<Restaurant | null> {
+        return this.repository.findByMapsUrl(mapsUrl);
     }
 }

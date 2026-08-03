@@ -1,11 +1,14 @@
-import { parse } from "node-html-parser";
 import {
+    RepoNewRestaurant,
     RepoRestaurant,
     RepoRestaurantMetadata,
     RestaurantsRepository,
 } from "../interface";
 import NotionAPIClient from "../../../client/notion/client";
-import {getCoordinatesFromMapsUrl} from "../../../util/coordinates";
+import {
+    getCoordinatesFromMapsUrl,
+    IndexedCoordinates,
+} from "../../../util/coordinates";
 
 export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
     constructor() {}
@@ -29,11 +32,7 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
                 lastModifiedDate
             );
 
-        const coordinatePromises: Promise<{
-            index: number;
-            latitude: number;
-            longitude: number;
-        }>[] = [];
+        const coordinatePromises: Promise<IndexedCoordinates | null>[] = [];
         for (let i = 0; i < restaurants.length; i++) {
             if (restaurants[i].hasFaultyMetadata) {
                 coordinatePromises.push(
@@ -45,7 +44,14 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
         const rowMetadataUpdatePromises: Promise<void>[] = [];
 
         await Promise.all(coordinatePromises).then((coordinates) => {
-            coordinates.forEach((c) => {
+            // Links that could not be resolved come back as null and are simply skipped: they
+            // keep hasFaultyMetadata and get retried on the next sync, rather than having
+            // unusable coordinates written back to Notion.
+            const resolved = coordinates.filter(
+                (c): c is IndexedCoordinates => c !== null
+            );
+
+            resolved.forEach((c) => {
                 const metadata: RepoRestaurantMetadata = {
                     coordinates: {
                         latitude: c.latitude,
@@ -68,7 +74,8 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
 
         if (coordinatePromises.length > 0) {
             console.info(
-                "Finished updating %d coordinates",
+                "Finished updating %d of %d coordinates",
+                rowMetadataUpdatePromises.length,
                 coordinatePromises.length
             );
         }
@@ -92,6 +99,20 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
     async getDatabaseSchema() {
         return await NotionAPIClient.getDatabaseSchema(
             process.env.RESTAURANTS_DATA_SOURCE_ID!
+        );
+    }
+
+    async createRestaurant(place: RepoNewRestaurant): Promise<RepoRestaurant> {
+        return await NotionAPIClient.createPlace(
+            process.env.RESTAURANTS_DATA_SOURCE_ID!,
+            place
+        );
+    }
+
+    async findByMapsUrl(mapsUrl: string): Promise<RepoRestaurant | null> {
+        return await NotionAPIClient.findCachedPlaceByMapsUrl(
+            process.env.RESTAURANTS_DATA_SOURCE_ID!,
+            mapsUrl
         );
     }
 }
