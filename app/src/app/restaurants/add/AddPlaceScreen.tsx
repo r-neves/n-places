@@ -238,9 +238,14 @@ export default function AddPlaceScreen() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionStatus, session]);
 
-    const applyResolved = useCallback((data: ResolveResponse) => {
-        if (data.name) {
-            setName(data.name);
+    const applyResolved = useCallback((data: ResolveResponse, nameHint: string | null) => {
+        // Android puts the place name in the share text ("Name\nhttps://..."), which is worth
+        // falling back to whenever the scrape comes back without one — Google serves a leaner
+        // page to datacenter IPs than to a phone, so a null name here is routine in production
+        // rather than exceptional.
+        const resolvedName = data.name || nameHint;
+        if (resolvedName) {
+            setName(resolvedName);
         }
         if (data.address) {
             setScrapedAddress(data.address);
@@ -257,8 +262,10 @@ export default function AddPlaceScreen() {
         // would defeat duplicate detection — and do not match the maps.app.goo.gl form every
         // existing row in the database uses.
 
+        // A name taken from the share payload still counts as filled in for you, so it gets the
+        // same AUTO badge and drops out of the "add this" list.
         const auto: string[] = [];
-        if (data.name) auto.push("name");
+        if (resolvedName) auto.push("name");
         if (data.address) auto.push("location");
         if (data.coordinates) auto.push("coordinates");
 
@@ -266,9 +273,9 @@ export default function AddPlaceScreen() {
         // The API talks about the place's "address"; this form calls that field "location", so
         // the names have to be translated or the amber prompt never lands on the input.
         setMissingFields(
-            (data.missing || []).map((field) =>
-                field === "address" ? "location" : field
-            )
+            (data.missing || [])
+                .filter((field) => !(field === "name" && resolvedName))
+                .map((field) => (field === "address" ? "location" : field))
         );
         setWarning(data.warning || null);
     }, []);
@@ -302,7 +309,7 @@ export default function AddPlaceScreen() {
                     throw new Error("resolve failed: " + response.status);
                 }
 
-                applyResolved(await response.json());
+                applyResolved(await response.json(), nameHint);
             } catch (e) {
                 console.warn("Could not resolve the shared link:", e);
                 // A failed lookup is never fatal: the link is kept and the form opens empty.
