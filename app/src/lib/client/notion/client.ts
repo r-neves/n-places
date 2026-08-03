@@ -1,9 +1,13 @@
 import {
     RepoDatabaseSchema,
+    RepoNewRestaurant,
     RepoRestaurant,
     RepoRestaurantMetadata,
 } from "../../places/repository/interface";
 import VercelKVCache from "@/lib/cache/vercel-kv";
+import { buildCreatePagePayload } from "./create-payload";
+import { NotionAPIError, notionErrorFromResponse } from "./errors";
+import { resolvePropertyNames } from "./property-map";
 
 const NOTION_API_URL = "https://api.notion.com/v1";
 
@@ -43,6 +47,31 @@ export default class NotionAPIClient {
                 Object.entries(cachedValue.restaurantMap)
             );
             return restaurantMap.get(placeID);
+        }
+
+        return null;
+    }
+
+    // Read-only lookup used by the duplicate pre-check on create. Deliberately touches nothing
+    // but the cache: calling getRestaurants for this would re-sync from Notion *and* rewrite the
+    // cached lastUpdated, which would force a full refetch on every subsequent load.
+    static async findCachedPlaceByMapsUrl(
+        databaseID: string,
+        mapsUrl: string
+    ): Promise<RepoRestaurant | null> {
+        const cachedValue: CacheValue | undefined = await VercelKVCache.get(
+            databaseID
+        );
+
+        if (cachedValue === undefined || cachedValue === null) {
+            return null;
+        }
+
+        const restaurants = Object.values(cachedValue.restaurantMap) as RepoRestaurant[];
+        for (let i = 0; i < restaurants.length; i++) {
+            if (restaurants[i] && restaurants[i].mapsUrl === mapsUrl) {
+                return restaurants[i];
+            }
         }
 
         return null;
@@ -93,27 +122,41 @@ export default class NotionAPIClient {
         });
     }
 
+    static async createPlace(
+        databaseID: string,
+        place: RepoNewRestaurant
+    ): Promise<RepoRestaurant> {
+        return createPlace(databaseID, place);
+    }
+
     static async getDatabaseSchema(
         databaseID: string
     ): Promise<RepoDatabaseSchema> {
-        const request = new Request(
-            `${NOTION_API_URL}/data_sources/${databaseID}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
-                    "Notion-Version": `${process.env.NOTION_API_VERSION}`,
-                    "Content-Type": "application/json",
-                },
-            }
-        );
-
-        return await fetch(request)
-            .then((response) => response.json())
-            .catch((error) => {
-                console.error(error);
-                return Response.error();
-            });
+        return getDatabaseSchema(databaseID);
     }
+}
+
+async function getDatabaseSchema(
+    databaseID: string
+): Promise<RepoDatabaseSchema> {
+    const request = new Request(`${NOTION_API_URL}/data_sources/${databaseID}`, {
+        headers: {
+            Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+            "Notion-Version": `${process.env.NOTION_API_VERSION}`,
+            "Content-Type": "application/json",
+        },
+    });
+
+    const response = await fetch(request);
+
+    // Unlike the other readers in this file, this one surfaces the failure: the create path
+    // depends on the schema to resolve property names and to validate option values, so a
+    // silently empty schema would turn into a confusing Notion validation error later.
+    if (!response.ok) {
+        throw await notionErrorFromResponse(response);
+    }
+
+    return await response.json();
 }
 
 async function getUserRole(databaseID: string, email: string): Promise<string> {
@@ -309,6 +352,121 @@ async function patchPlaceMetadata(
             restaurant.metadata = metadata;
             await VercelKVCache.set(databaseID, cachedValue);
         }
+    }
+}
+
+// Retried once, since both are transient by definition.
+const RETRYABLE_NOTION_CODES = ["rate_limited", "conflict_error"];
+const DEFAULT_RETRY_AFTER_MS = 1000;
+
+async function createPlace(
+    databaseID: string,
+    place: RepoNewRestaurant
+): Promise<RepoRestaurant> {
+    // The live schema is read first so the write uses whatever casing the database actually
+    // has ("Dish Price" vs "dish price"). Reads lowercase before comparing and so never had to
+    // care; a write does. Creates are rare enough that the extra call costs nothing.
+    const schema = await getDatabaseSchema(databaseID);
+    const propertyNames = resolvePropertyNames(schema);
+
+    if (propertyNames.name === undefined) {
+        throw new NotionAPIError(
+            500,
+            "schema_error",
+            "Could not find a title property in the Notion data source"
+        );
+    }
+
+    const payload = buildCreatePagePayload(databaseID, place, propertyNames);
+    const created = await postPageWithRetry(payload);
+    const restaurant = jsonEntryToPlaceItem(created);
+
+    await insertPlaceIntoCache(databaseID, restaurant);
+
+    return restaurant;
+}
+
+async function postPageWithRetry(payload: object): Promise<any> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const response = await fetch(`${NOTION_API_URL}/pages`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+                "Notion-Version": `${process.env.NOTION_API_VERSION}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+            return await response.json();
+        }
+
+        const retryAfterHeader = response.headers.get("Retry-After");
+        const error = await notionErrorFromResponse(response);
+
+        const isLastAttempt = attempt === 1;
+        if (isLastAttempt || RETRYABLE_NOTION_CODES.indexOf(error.code) === -1) {
+            console.error(
+                "Notion create failed: %s (%d) request_id=%s",
+                error.code,
+                error.status,
+                error.requestId
+            );
+            throw error;
+        }
+
+        const retryAfterMs = retryAfterHeader
+            ? parseFloat(retryAfterHeader) * 1000
+            : DEFAULT_RETRY_AFTER_MS;
+
+        console.warn(
+            "Notion create failed with %s, retrying in %dms",
+            error.code,
+            retryAfterMs
+        );
+
+        await new Promise((resolve) =>
+            setTimeout(resolve, Math.min(retryAfterMs, 10000))
+        );
+    }
+
+    // Unreachable: the loop either returns or throws.
+    throw new NotionAPIError(500, "unknown_error", "Notion create failed");
+}
+
+// Puts a freshly created place into the cache so it shows on the map immediately rather than
+// after the next sync.
+//
+// Deliberately does NOT touch lastUpdated. fetchPlacesFromNotion short-circuits only when the
+// cached timestamp matches, so leaving it alone means the next load still does its incremental
+// fetch and re-reads this page — picking up whatever Notion normalised on its side. Advancing
+// it would skip that resync.
+async function insertPlaceIntoCache(
+    databaseID: string,
+    restaurant: RepoRestaurant
+): Promise<void> {
+    try {
+        const cachedValue: CacheValue | undefined = await VercelKVCache.get(
+            databaseID
+        );
+
+        if (cachedValue === undefined || cachedValue === null) {
+            return;
+        }
+
+        const restaurantMap = new Map(Object.entries(cachedValue.restaurantMap));
+        restaurantMap.set(restaurant.id, restaurant);
+
+        // patchPlaceMetadata gets away without this because it mutates an object that is still
+        // shared with cachedValue.restaurantMap. Adding a *new* key does not propagate that way,
+        // so the map has to be serialised back explicitly.
+        cachedValue.restaurantMap = Object.fromEntries(restaurantMap);
+
+        await VercelKVCache.set(databaseID, cachedValue);
+    } catch (e) {
+        // The page is already in Notion; a cache miss just means it appears on the next sync.
+        console.warn("Failed to insert new place into cache: %s", e);
     }
 }
 

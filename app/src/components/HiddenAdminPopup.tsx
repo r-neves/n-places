@@ -5,7 +5,7 @@ import styles from "./hidden.module.css";
 import { Dispatch, RefObject, SetStateAction } from "react";
 import GoogleSignInButton from "./GoogleSignInButton";
 import SignOutButton from "./SignOutButton";
-import { TrashIcon } from "@/lib/constants/svg";
+import { GoogleMapsMarker, TrashIcon } from "@/lib/constants/svg";
 import { UserRole } from "@/lib/constants/enums";
 
 export default function HiddenAdminPopup({
@@ -46,6 +46,17 @@ export default function HiddenAdminPopup({
                             {userRole.current}
                         </span>
                     </p>
+                    {userRole.current === UserRole.ADMIN && (
+                        <button
+                            className={styles.wipeCacheButton}
+                            onClick={() =>
+                                (window.location.href = "/restaurants/add")
+                            }
+                        >
+                            <GoogleMapsMarker />
+                            <p className={styles.textDiv}>Add a place</p>
+                        </button>
+                    )}
                     {userRole.current === UserRole.ADMIN && (
                         <button
                             className={styles.wipeCacheButton}

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
+    "test:integration": "jest --testPathIgnorePatterns /node_modules/",
     "check-deps": "npx npm-check-updates"
   },
   "dependencies": {

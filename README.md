@@ -28,7 +28,7 @@ npm run dev
 - [ ] Include filters by different attributes
 - [ ] Support multiple databases to show places aside from restaurants (e.g. bars, shops, etc)
 - [ ] Allow the admin/moderator to edit a place rating
-- [ ] Allow the user to submit a new place just by pasting the google maps link or clicking on the share button on google maps
+- [X] Allow the user to submit a new place just by pasting the google maps link or clicking on the share button on google maps (Android only — iOS PWAs cannot register as share targets)
 
 ## Design Decisions
 - The app was created as a Progressive Web App to accelerate development. If there are important native features that need to be used for the app, the development will transition to a mobile framework like Flutter or React Native.

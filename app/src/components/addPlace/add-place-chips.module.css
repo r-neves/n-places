@@ -1,0 +1,111 @@
+/* Horizontally scrolling chip rows. The negative side margins (with matching padding) let the
+   chips bleed to the edge of the sheet, so a partially visible chip signals "scroll me" the way
+   a native picker does. */
+.chipRow {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 -15px;
+    padding: 2px 15px;
+}
+
+.chipRow::-webkit-scrollbar {
+    display: none;
+}
+
+.wrapRow {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    margin: 0;
+    padding: 0;
+}
+
+.chip {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    padding: 7px 14px;
+    border-radius: 30px;
+    border: 1px solid #e5e5e5;
+    background-color: #ffffff;
+    color: #333333;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: transform 120ms ease, background-color 120ms ease,
+        border-color 120ms ease;
+}
+
+.chip:active {
+    transform: scale(0.96);
+}
+
+.chip:focus-visible {
+    outline: 2px solid #333333;
+    outline-offset: 2px;
+}
+
+.chipSelected {
+    border-color: transparent;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* The cuisine chips carry the same icon the map markers use, so picking a type here previews
+   what the pin will look like. */
+.iconChip {
+    padding: 6px 14px 6px 8px;
+}
+
+.chipIcon {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+}
+
+.chipLabel {
+    text-transform: capitalize;
+}
+
+/* Ambience has no icon map of its own, so it reuses PlaceCard's ambience pill colours. */
+.ambienceChip {
+    background-color: #e8cead;
+    border-color: transparent;
+    color: #a2824e;
+}
+
+.ambienceChipSelected {
+    background-color: #a2824e;
+    color: #ffffff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .chip:hover {
+        border-color: #cac9c9;
+    }
+
+    .chipSelected:hover {
+        border-color: transparent;
+        opacity: 0.9;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chip {
+        transition: none;
+    }
+
+    .chip:active {
+        transform: none;
+    }
+}

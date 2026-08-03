@@ -561,6 +561,48 @@ export default function MapComponent() {
         }
     }
 
+    // Opens the map on a specific place, used by "/?placeId=..." after a place is added so the
+    // new pin is the first thing you see — which also confirms its coordinates are right.
+    //
+    // Reads the query string directly rather than via useSearchParams: that hook would force a
+    // Suspense boundary around this component, and an effect only ever runs on the client
+    // anyway.
+    function focusPlaceFromUrl(restaurants: Restaurant[]) {
+        const placeId = new URLSearchParams(window.location.search).get(
+            "placeId"
+        );
+        if (!placeId) {
+            return;
+        }
+
+        const place = restaurants.find(
+            (restaurant) => restaurant.id === placeId
+        );
+        if (place === undefined) {
+            console.warn("Place %s not found on the map", placeId);
+            return;
+        }
+
+        const coordinates = [
+            place.metadata.coordinates.longitude,
+            place.metadata.coordinates.latitude,
+        ] as [number, number];
+
+        // The place card covers past the vertical centre, so the target is nudged the same way
+        // a marker click does it.
+        if (coordinates[1] > 0) {
+            coordinates[1] = coordinates[1] - LATITUDE_OFFSET;
+        } else {
+            coordinates[1] = coordinates[1] + LATITUDE_OFFSET;
+        }
+
+        map.current?.flyTo({ center: coordinates, speed: 0.8, zoom: 15 });
+        setSelectedPlace(place);
+
+        // Drops the parameter so a refresh or a back-navigation does not re-open the card.
+        window.history.replaceState({}, "", window.location.pathname);
+    }
+
     async function handleMapLoad(
         loadImgsPromise: Promise<void>,
         restaurants: Restaurant[]
@@ -571,6 +613,7 @@ export default function MapComponent() {
         addLayers();
         addZoomEventListener();
         buildSearchItems(restaurants);
+        focusPlaceFromUrl(restaurants);
         console.info("Map loaded");
         setMapLoaded(true);
     }

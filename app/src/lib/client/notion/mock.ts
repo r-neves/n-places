@@ -1,5 +1,5 @@
 import { UserRole } from "@/lib/constants/enums";
-import { RepoRestaurant, RepoRestaurantMetadata } from "../../places/repository/interface";
+import { RepoNewRestaurant, RepoRestaurant, RepoRestaurantMetadata } from "../../places/repository/interface";
 
 const mockRestaurants: RepoRestaurant[] = [
     {
@@ -50,5 +50,24 @@ export default class NotionAPIClient {
 
     static async patchPlaceMetadata(_databaseID: string, _placeID: string, _metadata: RepoRestaurantMetadata): Promise<void> {
         // Do nothing
+    }
+
+    static async createPlace(_databaseID: string, place: RepoNewRestaurant): Promise<RepoRestaurant> {
+        return {
+            ...mockRestaurants[0],
+            id: "00000000-0000-4000-8000-000000000001",
+            name: place.name,
+            mapsUrl: place.mapsUrl,
+            location: place.location,
+            rating: place.rating,
+            visited: place.rating !== "" && place.rating.toLocaleLowerCase() !== "not visited",
+            dishPrice: place.dishPrice,
+            recommender: place.recommender,
+            description: place.description,
+            tags: place.tags.map((tag) => ({ tag: tag, color: "default" })),
+            ambience: place.ambience.map((tag) => ({ tag: tag, color: "default" })),
+            metadata: place.metadata ?? { coordinates: { latitude: 0, longitude: 0 } },
+            hasFaultyMetadata: place.metadata === null,
+        };
     }
 }

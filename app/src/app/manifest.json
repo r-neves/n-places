@@ -3,6 +3,7 @@
   "short_name": "N Places",
   "description": "See the places you saved on Notion on a Map!",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#fac3b8",
   "theme_color": "transparent",
@@ -11,12 +12,37 @@
     {
       "src": "/192px_map_logo_1.jpeg",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/jpeg"
     },
     {
       "src": "/512px_map_logo_1.jpeg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
+    }
+  ],
+  "share_target": {
+    "action": "/restaurants/add",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "Add a place",
+      "short_name": "Add place",
+      "description": "Add a new place from a Google Maps link",
+      "url": "/restaurants/add",
+      "icons": [
+        {
+          "src": "/192px_map_logo_1.jpeg",
+          "sizes": "192x192",
+          "type": "image/jpeg"
+        }
+      ]
     }
   ]
 }
