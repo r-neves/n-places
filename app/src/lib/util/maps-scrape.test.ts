@@ -3,10 +3,10 @@ import * as fs from "fs";
 import * as path from "path";
 import {
     isValidCoordinate,
-    parseAppInitState,
     parseBlobPlace,
     parseGoogleMapsHtml,
     parseOgTitle,
+    parsePlacePin,
     parsePlaceUrl,
 } from "./maps-scrape";
 
@@ -20,6 +20,14 @@ const FIXTURE = fs.readFileSync(
 const EXPECTED_NAME = "Xiaolongkan Hot Pot 小龙坎火锅";
 const EXPECTED_LATITUDE = 38.767198;
 const EXPECTED_LONGITUDE = -9.0991259;
+
+// The Location header maps.app.goo.gl/e5WSmqyn4Z8unJzC9 answers with, verbatim. Captured from
+// both a home connection and a datacenter IP: the 302 is byte-identical from either, which is
+// what makes the redirect chain the one dependable source of the place.
+const MERCEARIA_PERMALINK =
+    "https://www.google.com/maps/place/Mercearia+do+Largo/@39.8025986,-8.098671,17z/" +
+    "data=!3m1!4b1!4m6!3m5!1s0xd22a2484bce43d5:0xd4981929fd7f8624!8m2!3d39.8025986!4d-8.098671" +
+    "!16s%2Fg%2F11c2nz8gyr!18m1!1e1?entry=tts";
 
 describe("parseGoogleMapsHtml", () => {
     test("extracts name, address and coordinates from the captured response", () => {
@@ -61,6 +69,63 @@ describe("parseGoogleMapsHtml", () => {
         expect(result.longitude).toBeCloseTo(-8.9910923, 5);
         // og:title still wins for the name, since it separates name from address explicitly.
         expect(result.name).toBe(EXPECTED_NAME);
+    });
+
+    // The bug: Mercearia do Largo, a grocer in Leiria, came back pinned at 51.489,-0.088 —
+    // Southwark, London. Nothing in the lean page Google serves to Vercel identifies the place,
+    // so the coordinates fell through to APP_INITIALIZATION_STATE's leading triple, which is the
+    // map viewport — centred on where Google geolocates the *caller*, i.e. the datacenter.
+    describe("the lean page Google serves to a datacenter IP", () => {
+        // No canonical place URL, no og:title, no blob, and a viewport sitting in London.
+        const LEAN_PAGE =
+            '<meta content="Google Maps" property="og:title">' +
+            "window.APP_INITIALIZATION_STATE=[[[17.1,-0.0881552,51.4893323],null];";
+
+        test("never yields the viewport centre as the place's coordinates", () => {
+            const result = parseGoogleMapsHtml(LEAN_PAGE);
+
+            expect(result.latitude).toBeNull();
+            expect(result.longitude).toBeNull();
+            expect(result.sources.coordinates).toBeNull();
+        });
+
+        test("recovers the real place from the redirect that led to it", () => {
+            const result = parseGoogleMapsHtml(
+                LEAN_PAGE,
+                "https://www.google.com/maps/place//data=!4m2!3m1!1s0xd22a2484bce43d5",
+                ["https://maps.app.goo.gl/e5WSmqyn4Z8unJzC9", MERCEARIA_PERMALINK]
+            );
+
+            expect(result.name).toBe("Mercearia do Largo");
+            expect(result.sources.name).toBe("redirect-url");
+            // Leiria, Portugal — not London.
+            expect(result.latitude).toBeCloseTo(39.8025986, 5);
+            expect(result.longitude).toBeCloseTo(-8.098671, 5);
+            expect(result.sources.coordinates).toBe("place-pin");
+        });
+    });
+
+    // Google's canonical permalink for a place often has an empty name segment, which the
+    // previous pattern required to be non-empty — so those coordinates were skipped entirely.
+    test("reads coordinates from a place URL with no name segment", () => {
+        const result = parseGoogleMapsHtml(
+            "",
+            "https://www.google.com/maps/place//@39.8025986,-8.098671,17z/data=x"
+        );
+
+        expect(result.name).toBeNull();
+        expect(result.latitude).toBeCloseTo(39.8025986, 5);
+        expect(result.sources.coordinates).toBe("final-url");
+    });
+
+    // "@lat,lng" is where the map was pointed; "!3d/!4d" is the pin. They usually agree, and
+    // when they do not the pin is the place.
+    test("prefers the data-parameter pin over the viewport in the same URL", () => {
+        const result = parseGoogleMapsHtml("", MERCEARIA_PERMALINK);
+
+        expect(result.sources.coordinates).toBe("place-pin");
+        expect(result.latitude).toBeCloseTo(39.8025986, 5);
+        expect(result.longitude).toBeCloseTo(-8.098671, 5);
     });
 
     test("degrades to all-nulls instead of throwing on unusable input", () => {
@@ -217,8 +282,9 @@ describe("parseBlobPlace", () => {
     });
 
     // The page Google serves to a datacenter IP has no canonical /maps/place/ URL and no usable
-    // og:title, so the blob is the only thing left carrying the name. Production hit exactly
-    // this: sources={"name":null,"coordinates":"app-init-state"}.
+    // og:title, so when the redirect chain is unavailable too the blob is the only thing left
+    // carrying the name. Production hit exactly this:
+    // sources={"name":null,"coordinates":"app-init-state"}.
     test("supplies the name when no place URL or og:title is available", () => {
         const leanPage =
             '<meta content="Google Maps" property="og:title">' +
@@ -235,17 +301,19 @@ describe("parseBlobPlace", () => {
     });
 });
 
-describe("parseAppInitState", () => {
-    test("reads coordinates from the init blob, longitude first", () => {
-        const result = parseAppInitState(FIXTURE);
+describe("parsePlacePin", () => {
+    test("reads the pin out of a permalink's data parameter", () => {
+        const result = parsePlacePin(MERCEARIA_PERMALINK);
 
         expect(result).not.toBeNull();
-        expect(result!.latitude).toBeCloseTo(EXPECTED_LATITUDE, 5);
-        expect(result!.longitude).toBeCloseTo(EXPECTED_LONGITUDE, 5);
+        expect(result!.latitude).toBeCloseTo(39.8025986, 5);
+        expect(result!.longitude).toBeCloseTo(-8.098671, 5);
     });
 
-    test("returns null when the blob is absent", () => {
-        expect(parseAppInitState("<html></html>")).toBeNull();
+    test("returns null when there is no pin or it is unusable", () => {
+        expect(parsePlacePin("<html></html>")).toBeNull();
+        expect(parsePlacePin("/data=!8m2!3d0.0!4d0.0")).toBeNull();
+        expect(parsePlacePin("/data=!8m2!3d999.0!4d1.5")).toBeNull();
     });
 });
 
