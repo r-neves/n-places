@@ -21,6 +21,24 @@ const EXPECTED_NAME = "Xiaolongkan Hot Pot 小龙坎火锅";
 const EXPECTED_LATITUDE = 38.767198;
 const EXPECTED_LONGITUDE = -9.0991259;
 
+// The permalink a Maps-*app* share resolves to, verbatim (maps.app.goo.gl/mA3Yy2DizAz8chFh8,
+// the link that was actually landing in London). Note what it does not have: no "@lat,lng", no
+// "!3d/!4d" pin. The `data=` is the feature ID and nothing else. Google publishes no coordinate
+// for this place to an anonymous client — grepping the page it serves for the true values
+// (39.8025986, -8.098671) finds nothing, under four different user agents.
+const APP_SHARE_PERMALINK =
+    "https://www.google.com/maps/place/Mercearia+do+Largo,+Tv.+S%C3%A3o+Sebasti%C3%A3o+6," +
+    "+6100-737+Sert%C3%A3/data=!4m2!3m1!1s0xd22a2484bce43d5:0xd4981929fd7f8624!18m1!1e1" +
+    "?utm_source=mstt_1&entry=gps";
+
+// The two lines that mattered, lifted from the page that permalink serves. The label is the
+// right place; the triple after it is the viewport, identical to APP_INITIALIZATION_STATE's.
+const APP_SHARE_LEAN_PAGE =
+    '<meta content="Google Maps" property="og:title">' +
+    "window.APP_INITIALIZATION_STATE=[[[24844.21526968717,-9.0472448,38.88906239999999],null];" +
+    '\\"Mercearia do Largo, Tv. São Sebastião 6, 6100-737 Sertã\\",' +
+    "[[24844.21526968717,-9.0472448,38.88906239999999],null,[1024,768],13.1]";
+
 // The Location header maps.app.goo.gl/e5WSmqyn4Z8unJzC9 answers with, verbatim. Captured from
 // both a home connection and a datacenter IP: the 302 is byte-identical from either, which is
 // what makes the redirect chain the one dependable source of the place.
@@ -102,6 +120,44 @@ describe("parseGoogleMapsHtml", () => {
             expect(result.latitude).toBeCloseTo(39.8025986, 5);
             expect(result.longitude).toBeCloseTo(-8.098671, 5);
             expect(result.sources.coordinates).toBe("place-pin");
+        });
+    });
+
+    // The link that was actually landing in London. Production logged
+    // sources={"name":"blob","address":"blob","coordinates":"blob"} for it, and the blob's
+    // coordinates were the viewport. Name and address are recoverable from the URL segment;
+    // coordinates are not recoverable at all, and must come back null rather than invented.
+    describe("a link shared from the Maps app", () => {
+        test("takes name and address from the URL, and no coordinates from anywhere", () => {
+            const result = parseGoogleMapsHtml(
+                APP_SHARE_LEAN_PAGE,
+                APP_SHARE_PERMALINK,
+                ["https://maps.app.goo.gl/mA3Yy2DizAz8chFh8"]
+            );
+
+            expect(result.name).toBe("Mercearia do Largo");
+            expect(result.address).toBe("Tv. São Sebastião 6, 6100-737 Sertã");
+            expect(result.sources.name).toBe("place-label");
+            expect(result.sources.address).toBe("place-label");
+
+            expect(result.latitude).toBeNull();
+            expect(result.longitude).toBeNull();
+            expect(result.sources.coordinates).toBeNull();
+        });
+
+        // Belt and braces: whatever else changes, no output of this module may ever be the
+        // caller's own location.
+        test("never returns the viewport, whichever country the caller is in", () => {
+            const fromLondon = APP_SHARE_LEAN_PAGE.replace(
+                /24844\.21526968717,-9\.0472448,38\.88906239999999/g,
+                "24844.21526968717,-0.0881552,51.4893323"
+            );
+
+            const result = parseGoogleMapsHtml(fromLondon, APP_SHARE_PERMALINK);
+
+            expect(result.name).toBe("Mercearia do Largo");
+            expect(result.latitude).toBeNull();
+            expect(result.longitude).toBeNull();
         });
     });
 
@@ -255,14 +311,28 @@ describe("parsePlaceUrl", () => {
 });
 
 describe("parseBlobPlace", () => {
-    test("reads the name and coordinates out of the JS blob", () => {
+    test("reads the name out of the JS blob", () => {
         const result = parseBlobPlace(FIXTURE);
 
         expect(result).not.toBeNull();
         expect(result!.name).toBe(EXPECTED_NAME);
         expect(result!.address).toBeNull();
-        expect(result!.latitude).toBeCloseTo(EXPECTED_LATITUDE, 5);
-        expect(result!.longitude).toBeCloseTo(EXPECTED_LONGITUDE, 5);
+    });
+
+    // The triple after the label is the map viewport, not the place. Captured live from the
+    // page behind a Maps-app share link: the label is the right grocer in Sertã, the triple is
+    // byte-identical to APP_INITIALIZATION_STATE's and sits 100km away near Lisbon — or, from
+    // Vercel, in London. Nothing may leak it back out as a coordinate.
+    test("does not expose the viewport triple as coordinates", () => {
+        const result = parseBlobPlace(APP_SHARE_LEAN_PAGE) as Record<
+            string,
+            unknown
+        >;
+
+        expect(result).not.toBeNull();
+        expect(result.name).toBe("Mercearia do Largo");
+        expect(result).not.toHaveProperty("latitude");
+        expect(result).not.toHaveProperty("longitude");
     });
 
     // Observed live: the blob label is sometimes "<name>, <address>" rather than just the name,
@@ -295,9 +365,10 @@ describe("parseBlobPlace", () => {
 
         expect(result.name).toBe("Xiaolongkan Hot Pot");
         expect(result.sources.name).toBe("blob");
-        expect(result.latitude).toBeCloseTo(38.767198, 5);
-        // The place's own triple beats the viewport centre from APP_INITIALIZATION_STATE.
-        expect(result.sources.coordinates).toBe("blob");
+        // The name is all the blob is good for. Its triple is the viewport, so a page with
+        // nothing but a blob yields a name and no location.
+        expect(result.latitude).toBeNull();
+        expect(result.sources.coordinates).toBeNull();
     });
 });
 

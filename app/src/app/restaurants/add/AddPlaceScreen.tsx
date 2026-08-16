@@ -1020,8 +1020,9 @@ export default function AddPlaceScreen() {
                     </button>
                     <span className={styles.hint}>
                         Without coordinates the place still saves — it just
-                        won&apos;t appear on the map until the next sync works
-                        them out.
+                        won&apos;t appear on the map. Links shared from the Maps
+                        app carry no coordinates for us to read, so this is the
+                        one field worth filling in by hand.
                     </span>
                 </div>
             </details>
