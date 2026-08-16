@@ -9,6 +9,7 @@ export interface RestaurantsService {
     getDatabaseSchema(): Promise<DatabaseSchema>;
     createRestaurant(place: NewRestaurant): Promise<Restaurant>;
     findByMapsUrl(mapsUrl: string): Promise<Restaurant | null>;
+    listRecommenders(): Promise<string[]>;
 }
 
 export class RestaurantsImpl implements RestaurantsService {
@@ -44,5 +45,9 @@ export class RestaurantsImpl implements RestaurantsService {
 
     async findByMapsUrl(mapsUrl: string): Promise<Restaurant | null> {
         return this.repository.findByMapsUrl(mapsUrl);
+    }
+
+    async listRecommenders(): Promise<string[]> {
+        return this.repository.listRecommenders();
     }
 }
