@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./type-select.module.css";
+import { ChevronDown } from "@/lib/constants/svg";
 import { RestaurantTypeMap } from "../restaurant-items";
 
 interface TypeSelectProps {
@@ -107,7 +108,7 @@ export default function TypeSelect({
                         }`}
                         aria-hidden="true"
                     >
-                        ⌄
+                        <ChevronDown />
                     </span>
                 </button>
 

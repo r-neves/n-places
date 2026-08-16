@@ -38,10 +38,13 @@
     color: #cac9c9;
 }
 
+/* inline-flex so the icon centres against the label instead of sitting on the text baseline —
+   see ChevronDown in svg.tsx for why this is a drawn icon rather than the "⌄" character. */
 .chevron {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
     color: #616161;
-    font-size: 14px;
-    line-height: 1;
     transition: transform 150ms ease;
 }
 
