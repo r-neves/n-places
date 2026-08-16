@@ -2,6 +2,9 @@
   "name": "notion-places",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -37,7 +40,7 @@
   "devDependencies": {
     "@babel/preset-typescript": "^7.28.5",
     "@jest/globals": "^29.7.0",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "19.1.4",
     "@types/react-dom": "19.1.5",
     "autoprefixer": "^10.0.1",
