@@ -1,6 +1,6 @@
 "use client";
 
-import styles from "./add-place-chips.module.css";
+import styles from "./option-chips.module.css";
 
 interface OptionChipsProps {
     options: string[];

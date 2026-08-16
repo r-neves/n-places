@@ -3,10 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import styles from "./add-place.module.css";
-import TypeSelect from "@/components/addPlace/TypeSelect";
-import OptionChips from "@/components/addPlace/OptionChips";
-import RecommenderInput from "@/components/addPlace/RecommenderInput";
+import styles from "@/components/placeForm/place-form.module.css";
+import TypeSelect from "@/components/placeForm/TypeSelect";
+import OptionChips from "@/components/placeForm/OptionChips";
+import RecommenderInput from "@/components/placeForm/RecommenderInput";
+import {
+    intersectWithKnownTypes,
+    lookupColor,
+    schemaOptions,
+} from "@/components/placeForm/schema-options";
 import { UserRole } from "@/lib/constants/enums";
 import { GoogleMapsMarker } from "@/lib/constants/svg";
 import { PriceMap, RatingMap, RestaurantTypeMap } from "@/components/restaurant-items";
@@ -38,69 +43,6 @@ interface ResolveResponse {
 // connection must never leave the user stuck on a skeleton with no way forward.
 const RESOLVE_TIMEOUT_MS = 10000;
 const SAVED_REDIRECT_MS = 1200;
-
-// Notion spells the "not visited" status with a lowercase v; RatingMap keys it with a capital
-// one. Everything that crosses that boundary has to compare case-insensitively or it silently
-// gets undefined (and PlaceCard.tsx:59 already carries the same defence).
-function lookupColor(
-    map: { [key: string]: { color: string } },
-    value: string
-): string | undefined {
-    if (!value) {
-        return undefined;
-    }
-
-    const direct = map[value];
-    if (direct) {
-        return direct.color;
-    }
-
-    const normalized = value.toLocaleLowerCase();
-    const keys = Object.keys(map);
-    for (let i = 0; i < keys.length; i++) {
-        if (keys[i].toLocaleLowerCase() === normalized) {
-            return map[keys[i]].color;
-        }
-    }
-
-    return undefined;
-}
-
-function schemaOptions(
-    schema: DatabaseSchema | null,
-    label: string
-): string[] {
-    if (!schema || !schema.properties) {
-        return [];
-    }
-
-    const propertyNames = Object.keys(schema.properties);
-    for (let i = 0; i < propertyNames.length; i++) {
-        if (propertyNames[i].toLocaleLowerCase() !== label) {
-            continue;
-        }
-
-        const property = schema.properties[propertyNames[i]];
-        const container =
-            property.status || property.multi_select || property.select;
-
-        if (container && container.options) {
-            return container.options.map((option) => option.name);
-        }
-    }
-
-    return [];
-}
-
-// Only cuisine types RestaurantTypeMap has an icon and colour for are offered. Notion will
-// happily create a brand new multi-select option for anything sent to it, and PlaceCard does an
-// unguarded RestaurantTypeMap[tag].color lookup — so an unrecognised type saved here would
-// crash the card for that place later.
-function intersectWithKnownTypes(options: string[]): string[] {
-    return options.filter(
-        (option) => RestaurantTypeMap[option.toLocaleLowerCase()] !== undefined
-    );
-}
 
 // The database stores neighbourhood-style locations ("Parque das Nações, Lisboa"), but a scrape
 // returns a full street address. Offers the trailing comma-parts as one-tap shortenings so new
