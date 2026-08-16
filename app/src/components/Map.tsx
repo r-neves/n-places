@@ -3,7 +3,7 @@
 import styles from "./map.module.css";
 import mapStyleJson from "../../public/map-style.json";
 import maptilerLogo from "../../public/maptiler-logo.png";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Map as MapGL,
     GeolocateControl,
@@ -20,6 +20,14 @@ import {
     RestaurantTypeMap,
     splitRestaurantsByTag,
 } from "./restaurant-items";
+import {
+    EMPTY_FILTERS,
+    PlaceFilters,
+    buildFilterOptions,
+    featureFilterProperties,
+    filtersToExpression,
+} from "./place-filters";
+import FilterPills from "./FilterPills";
 import { SearchBar, SearchItem } from "./SearchBar";
 import Loading from "@/components/Loading";
 import { capitalize } from "@/lib/util/format";
@@ -42,10 +50,67 @@ export default function MapComponent() {
     let [searchItems, setSearchItems] = useState<SearchItem[]>([]);
     let [isHiddenPopupVisible, setIsHiddenPopupVisible] = useState(false);
     let userRole = useRef("");
+    // Mirrors userRole for rendering. The ref alone cannot drive the recommender pill's
+    // visibility: the role arrives from an async call, and writing a ref does not re-render.
+    let [isAdmin, setIsAdmin] = useState(false);
+    let [places, setPlaces] = useState<Restaurant[]>([]);
+    let [placeFilters, setPlaceFilters] = useState<PlaceFilters>(EMPTY_FILTERS);
     let [selectedPlace, setSelectedPlace] = useState<Restaurant | null>(null);
-    let currentFilter = useRef<ExpressionSpecification>(ALL_FILTER);
+    // The three things that decide what a layer shows, kept apart so they can be combined
+    // rather than overwrite each other — picking "Visited" in the search bar used to wipe out
+    // whatever else was filtered. Refs rather than state because the map event handlers close
+    // over them and must always read the current value.
+    let searchFilter = useRef<ExpressionSpecification>(ALL_FILTER);
+    let pillFilter = useRef<ExpressionSpecification | null>(null);
+    let selectedPlaceId = useRef<string | null>(null);
     const map = useRef<MapGL>(undefined);
     const { data: session, status } = useSession();
+
+    const filterOptions = useMemo(
+        () => buildFilterOptions(places, isAdmin),
+        [places, isAdmin]
+    );
+
+    // The single place that pushes filter state onto the layers. Every path that changes what
+    // is visible — a pill, a search pick, a marker tap — ends here.
+    function applyMapFilters() {
+        const clauses: ExpressionSpecification[] = [searchFilter.current];
+
+        if (pillFilter.current !== null) {
+            clauses.push(pillFilter.current);
+        }
+
+        if (selectedPlaceId.current !== null) {
+            // The selected pin is drawn by the "-selected" layers, so the base ones have to
+            // skip it or the two icons stack on top of each other.
+            clauses.push(["!=", ["get", "id"], selectedPlaceId.current]);
+        }
+
+        const base: FilterSpecification =
+            clauses.length === 1 ? clauses[0] : ["all", ...clauses];
+        const selected: FilterSpecification =
+            selectedPlaceId.current === null
+                ? NONE_FILTER
+                : ["==", ["get", "id"], selectedPlaceId.current];
+
+        for (const tag in RestaurantTypeMap) {
+            map.current?.setFilter(tag, base);
+            map.current?.setFilter(`${tag}-name`, base);
+            map.current?.setFilter(`${tag}-selected`, selected);
+            map.current?.setFilter(`${tag}-name-selected`, selected);
+
+            if (selectedPlaceId.current !== null) {
+                // TODO figure out why this doesn't work
+                map.current?.moveLayer(`${tag}-selected`, `${tag}`);
+            }
+        }
+    }
+
+    function selectPlace(place: Restaurant | null) {
+        selectedPlaceId.current = place === null ? null : place.id;
+        setSelectedPlace(place);
+        applyMapFilters();
+    }
 
     async function loadImages() {
         Object.values(RestaurantTypeMap).forEach((item) => {
@@ -102,6 +167,9 @@ export default function MapComponent() {
                                     (t: { tag: string; color: string }) => t.tag
                                 )
                                 .join(", "),
+                            // typesKey / ambienceKey / ratingScore / priceTier — the flattened
+                            // forms the pill filters compare against.
+                            ...featureFilterProperties(entry),
                         },
                     })),
                 },
@@ -274,25 +342,6 @@ export default function MapComponent() {
             }
 
             const place = features[0];
-            const placeId = place.properties.id;
-
-            // Update the selected place
-            for (const layer of queryLayers) {
-                const notSelectedFilter: FilterSpecification = [
-                    "all", 
-                    ["!=", ["get", "id"], placeId], 
-                    currentFilter.current
-                ];
-
-                map.current?.setFilter(`${layer}`, notSelectedFilter);
-                map.current?.setFilter(`${layer}-selected`, [
-                    "==",
-                    ["get", "id"],
-                    placeId,
-                ]);
-                // TODO figure out why this doesn't work
-                map.current?.moveLayer(`${layer}-selected`, `${layer}`);
-            }
 
             const geometry = place.geometry;
             if (!geometry.type || geometry.type !== "Point") {
@@ -313,8 +362,7 @@ export default function MapComponent() {
                 zoom: 15,
             });
 
-            const parsedPlace = JSON.parse(place.properties.place);
-            setSelectedPlace(parsedPlace);
+            selectPlace(JSON.parse(place.properties.place));
         };
 
         const onEmptyClickHandler = (
@@ -328,14 +376,7 @@ export default function MapComponent() {
             });
 
             if (!features || !features.length) {
-                for (const tag in RestaurantTypeMap) {
-                    map.current?.setFilter(`${tag}`, currentFilter.current);
-                    map.current?.setFilter(`${tag}-name`, currentFilter.current);
-                    map.current?.setFilter(`${tag}-selected`, NONE_FILTER);
-                    map.current?.setFilter(`${tag}-name-selected`, NONE_FILTER);
-                }
-
-                setSelectedPlace(null);
+                selectPlace(null);
             }
         };
 
@@ -390,32 +431,25 @@ export default function MapComponent() {
     function buildSearchItems(restaurants: Restaurant[]) {
         const items: SearchItem[] = [];
 
+        // Search picks now set searchFilter and re-apply, so they narrow whatever the pills
+        // already selected instead of replacing it.
+        const applySearchFilter = (filter: ExpressionSpecification) => {
+            searchFilter.current = filter;
+            applyMapFilters();
+        };
+
         items.push({
             label: "Visited",
             type: "state",
-            clickHandler: () => {
-                const visitedFilter: FilterSpecification = ["==", ["get", "visited"], true];
-                currentFilter.current = visitedFilter;
-
-                for (const tag in RestaurantTypeMap) {
-                    map.current?.setFilter(tag, visitedFilter);
-                    map.current?.setFilter(`${tag}-name`, visitedFilter);
-                }
-            },
+            clickHandler: () =>
+                applySearchFilter(["==", ["get", "visited"], true]),
         });
 
         items.push({
             label: "Not Visited",
             type: "state",
-            clickHandler: () => {
-                const notVisitedFilter: FilterSpecification = ["==", ["get", "visited"], false];
-                currentFilter.current = notVisitedFilter;
-
-                for (const tag in RestaurantTypeMap) {
-                    map.current?.setFilter(tag, notVisitedFilter);
-                    map.current?.setFilter(`${tag}-name`, notVisitedFilter);
-                }
-            },
+            clickHandler: () =>
+                applySearchFilter(["==", ["get", "visited"], false]),
         });
 
         for (const tag in RestaurantTypeMap) {
@@ -423,19 +457,12 @@ export default function MapComponent() {
             items.push({
                 label: label,
                 type: "tag",
-                clickHandler: () => {
-                    const tagFilter: FilterSpecification = [
+                clickHandler: () =>
+                    applySearchFilter([
                         "in",
                         tag,
                         ["downcase", ["get", "tags"]],
-                    ];
-                    currentFilter.current = tagFilter;
-
-                    for (const t in RestaurantTypeMap) {
-                        map.current?.setFilter(t, tagFilter);
-                        map.current?.setFilter(`${t}-name`, tagFilter);
-                    }
-                },
+                    ]),
             });
         }
 
@@ -457,31 +484,6 @@ export default function MapComponent() {
                 label: restaurant.name,
                 type: "place",
                 clickHandler: () => {
-                    // Update the selected place
-                    const notSelectedFilter: FilterSpecification = [
-                        "!=",
-                        ["get", "id"],
-                        restaurant.id,
-                    ];
-                    currentFilter.current = notSelectedFilter;
-
-                    for (const t in RestaurantTypeMap) {
-                        map.current?.setFilter(`${t}`, notSelectedFilter);
-                        map.current?.setFilter(`${t}-name`, notSelectedFilter);
-                        map.current?.setFilter(`${t}-selected`, [
-                            "==",
-                            ["get", "id"],
-                            restaurant.id,
-                        ]);
-                        map.current?.setFilter(`${t}-name-selected`, [
-                            "==",
-                            ["get", "id"],
-                            restaurant.id,
-                        ]);
-                        // TODO figure out why this doesn't work
-                        map.current?.moveLayer(`${t}-selected`, `${t}`);
-                    }
-
                     const coordinates = [
                         restaurant.metadata.coordinates.longitude,
                         restaurant.metadata.coordinates.latitude,
@@ -499,7 +501,7 @@ export default function MapComponent() {
                         zoom: 15,
                     });
 
-                    setSelectedPlace(restaurant);
+                    selectPlace(restaurant);
                 },
             });
 
@@ -533,15 +535,12 @@ export default function MapComponent() {
                 items.push({
                     label: restaurant.recommender,
                     type: "recommender",
-                    clickHandler: () => {
-                        const recommenderFilter: FilterSpecification = ["==", ["get", "recommender"], restaurant.recommender];
-                        currentFilter.current = recommenderFilter;
-
-                        for (const t in RestaurantTypeMap) {
-                            map.current?.setFilter(t, recommenderFilter);
-                            map.current?.setFilter(`${t}-name`, recommenderFilter);
-                        }
-                    },
+                    clickHandler: () =>
+                        applySearchFilter([
+                            "==",
+                            ["get", "recommender"],
+                            restaurant.recommender,
+                        ]),
                 });
             }
         }
@@ -549,16 +548,12 @@ export default function MapComponent() {
         setSearchItems(items);
     }
 
+    // Clearing the search box only undoes what the search box did. The pills keep their own
+    // "Clear" control, so a stray tap on the ✕ cannot silently throw away a filter set up
+    // somewhere else.
     function resetFilters() {
-        for (const tag in RestaurantTypeMap) {
-            currentFilter.current = ALL_FILTER;
-            map.current?.setFilter(tag, null);
-            map.current?.setFilter(`${tag}-name`, null);
-            map.current?.setFilter(`${tag}-selected`, NONE_FILTER);
-            map.current?.setFilter(`${tag}-name-selected`, NONE_FILTER);
-
-            setSelectedPlace(null);
-        }
+        searchFilter.current = ALL_FILTER;
+        selectPlace(null);
     }
 
     // Opens the map on a specific place, used by "/?placeId=..." after a place is added so the
@@ -597,7 +592,7 @@ export default function MapComponent() {
         }
 
         map.current?.flyTo({ center: coordinates, speed: 0.8, zoom: 15 });
-        setSelectedPlace(place);
+        selectPlace(place);
 
         // Drops the parameter so a refresh or a back-navigation does not re-open the card.
         window.history.replaceState({}, "", window.location.pathname);
@@ -613,6 +608,9 @@ export default function MapComponent() {
         addLayers();
         addZoomEventListener();
         buildSearchItems(restaurants);
+        // The pills only offer values the loaded places actually use, so this has to be the
+        // same list the map was built from.
+        setPlaces(restaurants);
         focusPlaceFromUrl(restaurants);
         console.info("Map loaded");
         setMapLoaded(true);
@@ -689,6 +687,7 @@ export default function MapComponent() {
             }).then((response) => response.json());
 
             userRole.current = response === "" ? UserRole.VIEWER : response;
+            setIsAdmin(userRole.current === UserRole.ADMIN);
         };
 
         updateUserRole();
@@ -698,6 +697,17 @@ export default function MapComponent() {
         addEventListeners();
     }, [userRole, mapLoaded]);
 
+    useEffect(() => {
+        pillFilter.current = filtersToExpression(placeFilters);
+
+        if (mapLoaded) {
+            applyMapFilters();
+        }
+        // applyMapFilters is redefined every render and only reads refs, so it is deliberately
+        // not a dependency — listing it would re-run this on every render instead.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [placeFilters, mapLoaded]);
+
     return (
         <div className={styles.mapContainer}>
             <Loading isMapLoaded={mapLoaded} />
@@ -705,7 +715,13 @@ export default function MapComponent() {
                 isMapLoaded={mapLoaded}
                 searchItems={searchItems}
                 resetFiltersHandler={resetFilters}
-            ></SearchBar>
+            >
+                <FilterPills
+                    options={filterOptions}
+                    filters={placeFilters}
+                    onChange={setPlaceFilters}
+                />
+            </SearchBar>
             <div id="mapElem" className={styles.mapCanvas}></div>
             {process.env.NEXT_PUBLIC_MAPTILER_API_KEY && (
                 <div className={styles.maptilerAttribution}>

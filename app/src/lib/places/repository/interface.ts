@@ -71,4 +71,5 @@ export interface RestaurantsRepository {
 	getDatabaseSchema(): Promise<RepoDatabaseSchema>;
 	createRestaurant(place: RepoNewRestaurant): Promise<RepoRestaurant>;
 	findByMapsUrl(mapsUrl: string): Promise<RepoRestaurant | null>;
+	listRecommenders(): Promise<string[]>;
 }

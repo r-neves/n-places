@@ -77,6 +77,42 @@ export default class NotionAPIClient {
         return null;
     }
 
+    // The distinct names already used as recommenders, for the add screen's autocomplete.
+    // Recommender is a rich_text property, so unlike type or ambience there is no schema to read
+    // the options from — the existing rows are the only source.
+    //
+    // Cache-only for the same reason findCachedPlaceByMapsUrl is: going through getRestaurants
+    // would re-sync from Notion and rewrite the cached lastUpdated, forcing a full refetch on
+    // every subsequent map load. A cold cache simply yields no suggestions, and the field is
+    // free text anyway.
+    static async listCachedRecommenders(databaseID: string): Promise<string[]> {
+        const cachedValue: CacheValue | undefined = await VercelKVCache.get(
+            databaseID
+        );
+
+        if (cachedValue === undefined || cachedValue === null) {
+            return [];
+        }
+
+        const restaurants = Object.values(
+            cachedValue.restaurantMap
+        ) as RepoRestaurant[];
+        const names: string[] = [];
+
+        for (let i = 0; i < restaurants.length; i++) {
+            if (!restaurants[i] || !restaurants[i].recommender) {
+                continue;
+            }
+
+            const name = restaurants[i].recommender.trim();
+            if (name.length > 0 && names.indexOf(name) === -1) {
+                names.push(name);
+            }
+        }
+
+        return names.sort((a, b) => a.localeCompare(b));
+    }
+
     static async getDBLastUpdatedDate(databaseID: string): Promise<Date> {
         return fetchDBLastUpdatedDate(databaseID);
     }

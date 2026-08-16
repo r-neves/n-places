@@ -59,6 +59,10 @@ interface RatingMap {
 interface Price {
     id: string;
     color: string;
+    // Cheapest to priciest, 1-based. The bands are text in Notion ("13-20 €"), so there is
+    // nothing to compare numerically — the "or lower" price filter ranks them by this instead.
+    // 0 is reserved for a place with no band set.
+    tier: number;
 }
 
 interface PriceMap {
@@ -240,22 +244,27 @@ export const PriceMap: PriceMap = {
     "undefined": {
         id: "Not defined",
         color: NOTION_GREY,
+        tier: 0,
     },
     "5-12 €": {
         id: "5-12 €",
         color: NOTION_GREEN,
+        tier: 1,
     },
     "13-20 €": {
         id: "13-20 €",
         color: NOTION_YELLOW,
+        tier: 2,
     },
     "21-35 €": {
         id: "21-35 €",
         color: NOTION_RED,
+        tier: 3,
     },
     "+35 €": {
         id: "+35 €",
         color: NOTION_RED,
+        tier: 4,
     },
 };
 

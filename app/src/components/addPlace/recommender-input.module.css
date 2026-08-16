@@ -1,0 +1,46 @@
+/* Anchors the suggestion list, which overlays the fields below rather than pushing them down
+   the form while you are still typing. */
+.container {
+    position: relative;
+}
+
+.suggestions {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 4;
+    /* Roughly five names before scrolling, so the rest of the form stays reachable. */
+    max-height: 220px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0;
+    padding: 4px;
+    list-style-type: none;
+    background-color: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.suggestion {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: #333333;
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: 300;
+    text-align: left;
+    cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .suggestion:hover {
+        background-color: #f3f4f6;
+    }
+}

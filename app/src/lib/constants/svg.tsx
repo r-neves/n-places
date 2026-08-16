@@ -86,6 +86,26 @@ export const EditIcon = () => (
     </svg>
 );
 
+// Drawn rather than the "⌄" character: that glyph is not centred in its em box, so it hangs
+// below the text baseline, and rotating it 180° for an open state throws it just as far above.
+// The path is symmetric about the middle of the viewBox, so it pivots on its own centre.
+export const ChevronDown = () => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M6 9l6 6l6 -6" />
+    </svg>
+);
+
 export const GoogleMapsMarker = () => (
     <svg
         xmlns="http://www.w3.org/2000/svg"

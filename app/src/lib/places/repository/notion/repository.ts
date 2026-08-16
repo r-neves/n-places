@@ -115,4 +115,10 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
             mapsUrl
         );
     }
+
+    async listRecommenders(): Promise<string[]> {
+        return await NotionAPIClient.listCachedRecommenders(
+            process.env.RESTAURANTS_DATA_SOURCE_ID!
+        );
+    }
 }

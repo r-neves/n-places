@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import styles from "./add-place.module.css";
 import TypeSelect from "@/components/addPlace/TypeSelect";
 import OptionChips from "@/components/addPlace/OptionChips";
+import RecommenderInput from "@/components/addPlace/RecommenderInput";
 import { UserRole } from "@/lib/constants/enums";
 import { GoogleMapsMarker } from "@/lib/constants/svg";
 import { PriceMap, RatingMap, RestaurantTypeMap } from "@/components/restaurant-items";
@@ -136,6 +137,7 @@ export default function AddPlaceScreen() {
     const [phase, setPhase] = useState<Phase>("authChecking");
     const [userRole, setUserRole] = useState<string | null>(null);
     const [schema, setSchema] = useState<DatabaseSchema | null>(null);
+    const [recommenderOptions, setRecommenderOptions] = useState<string[]>([]);
 
     const [name, setName] = useState("");
     const [location, setLocation] = useState("");
@@ -241,15 +243,15 @@ export default function AddPlaceScreen() {
             .then((response) => response.json())
             .then((role: string) => {
                 setUserRole(role === "" ? UserRole.VIEWER : role);
-                if (session.user?.name && recommender === "") {
-                    setRecommender(session.user.name);
-                }
             })
             .catch((error) => {
                 console.error("Error fetching role:", error);
                 setUserRole(UserRole.VIEWER);
             });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // The recommender is deliberately NOT pre-filled with the signed-in user's name. Most
+        // places are added on someone else's suggestion, so a prefilled name is wrong more often
+        // than it is right — and being already filled in, it is the field most likely to be
+        // scrolled past without a second look.
     }, [sessionStatus, session]);
 
     const applyResolved = useCallback((data: ResolveResponse, nameHint: string | null) => {
@@ -356,6 +358,18 @@ export default function AddPlaceScreen() {
             .then((data: DatabaseSchema) => setSchema(data))
             .catch((error) =>
                 console.error("Error fetching database schema:", error)
+            );
+
+        // Recommender is free text in Notion, so its suggestions come from the names already
+        // saved rather than from the schema. Never fatal — an empty list just means no
+        // autocomplete.
+        fetch("/api/restaurants/recommenders")
+            .then((response) => (response.ok ? response.json() : []))
+            .then((names: string[]) =>
+                setRecommenderOptions(Array.isArray(names) ? names : [])
+            )
+            .catch((error) =>
+                console.warn("Error fetching recommenders:", error)
             );
     }, [userRole]);
 
@@ -981,12 +995,11 @@ export default function AddPlaceScreen() {
 
             <div className={styles.field}>
                 <span className={styles.caption}>Recommender</span>
-                <input
-                    className={styles.input}
+                <RecommenderInput
+                    options={recommenderOptions}
                     value={recommender}
-                    onChange={(e) => setRecommender(e.target.value)}
-                    placeholder="Who suggested it?"
-                    autoCapitalize="words"
+                    onChange={setRecommender}
+                    className={styles.input}
                 />
             </div>
 

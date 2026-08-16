@@ -14,10 +14,13 @@ export function SearchBar({
     isMapLoaded,
     searchItems,
     resetFiltersHandler,
+    children,
 }: {
     isMapLoaded: boolean;
     searchItems: SearchItem[];
     resetFiltersHandler: () => void;
+    // The filter pill row, rendered directly beneath the input so the two read as one control.
+    children?: React.ReactNode;
 }) {
     const [filteredItems, setFilteredItems] = useState<SearchItem[]>([]);
     const [inputValue, setInputValue] = useState("");
@@ -74,62 +77,67 @@ export function SearchBar({
     return (
         <div className={styles.searchWrapper}>
             <div className={styles.searchDiv}>
-                <div className={styles.searchBar}>
-                    <input
-                        type="text"
-                        placeholder="Names, Tags, Locations..."
-                        className={styles.searchInput}
-                        value={inputValue}
-                        onChange={handleChange}
-                    />
-                    {inputValue === "" ? (
-                        <svg
-                            className={styles.searchIcon}
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
-                            <path d="M21 21l-6 -6" />
-                        </svg>
-                    ) : (
-                        <svg
-                            className={styles.resetIcon}
-                            onClick={resetSearchHandler}
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M18 6l-12 12" />
-                            <path d="M6 6l12 12" />
-                        </svg>
-                    )}
+                {/* The suggestion list is anchored to this wrapper and overlays what follows,
+                    so typing a query does not shove the filter pills down the screen. */}
+                <div className={styles.searchBarWrapper}>
+                    <div className={styles.searchBar}>
+                        <input
+                            type="text"
+                            placeholder="Names, Tags, Locations..."
+                            className={styles.searchInput}
+                            value={inputValue}
+                            onChange={handleChange}
+                        />
+                        {inputValue === "" ? (
+                            <svg
+                                className={styles.searchIcon}
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
+                                <path d="M21 21l-6 -6" />
+                            </svg>
+                        ) : (
+                            <svg
+                                className={styles.resetIcon}
+                                onClick={resetSearchHandler}
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                <path d="M18 6l-12 12" />
+                                <path d="M6 6l12 12" />
+                            </svg>
+                        )}
+                    </div>
+                    <ul className={styles.searchSuggestions}>
+                        {filteredItems.map((item) => (
+                            <li
+                                className={styles.searchSuggestion}
+                                key={item.label}
+                                onClick={() => handleSelect(item)}
+                            >
+                                <span>{item.label}</span> <span className={styles.itemType}>({itemType(item)})</span>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
-                <ul className={styles.searchSuggestions}>
-                    {filteredItems.map((item) => (
-                        <li
-                            className={styles.searchSuggestion}
-                            key={item.label}
-                            onClick={() => handleSelect(item)}
-                        >
-                            <span>{item.label}</span> <span className={styles.itemType}>({itemType(item)})</span> 
-                        </li>
-                    ))}
-                </ul>
+                {children}
             </div>
         </div>
     );
