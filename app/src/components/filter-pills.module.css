@@ -1,0 +1,219 @@
+/* Anchors the dropdown. Deliberately NOT the scrolling row: see FilterPills.tsx. */
+.container {
+    position: relative;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* The negative margin (with matching padding) lets a pill bleed past the edge, which is how
+       a native picker signals there is more to scroll to. The vertical padding leaves room for
+       the pills' drop shadow. */
+    margin: 0 -4px;
+    padding: 4px;
+}
+
+.row::-webkit-scrollbar {
+    display: none;
+}
+
+.pill {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 30px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    color: #333333;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.pill:active {
+    transform: scale(0.96);
+}
+
+.pill:focus-visible {
+    outline: 2px solid #333333;
+    outline-offset: 2px;
+}
+
+.pillActive {
+    background-color: #333333;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* inline-flex so the icon's own box centres against the label rather than sitting on the text
+   baseline — which is what left the arrow low when closed and high when open. */
+.chevron {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    opacity: 0.7;
+    transition: transform 150ms ease;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+/* Solid rather than a bare text button: it sits over the map, and map tiles are light enough
+   in places that unbacked text disappears into the street labels. */
+.clearAll {
+    flex: 0 0 auto;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 30px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    color: #616161;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.panelHeader {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #616161;
+}
+
+.panelClear {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: #616161;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.panelBody {
+    /* Roughly six rows before scrolling — long enough to read as a list, short enough that the
+       map stays visible behind it. */
+    max-height: 264px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px;
+}
+
+.option {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: #333333;
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: 300;
+    text-align: left;
+    cursor: pointer;
+}
+
+.optionSelected {
+    background-color: #f7f7f7;
+    font-weight: 400;
+}
+
+.optionIcon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+
+.swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+/* No text-transform: the option names are Notion's own ("Group-friendly") or built here
+   ("8/10 or higher"), and capitalising them turns those into "Group-Friendly" and
+   "8/10 Or Higher". */
+.optionLabel {
+    flex: 1 1 auto;
+}
+
+.check {
+    flex: 0 0 auto;
+    width: 14px;
+    font-size: 14px;
+    line-height: 1;
+    text-align: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .option:hover {
+        background-color: #f3f4f6;
+    }
+
+    .pill:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    }
+
+    .panelClear:hover {
+        color: #333333;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pill,
+    .chevron {
+        transition: none;
+    }
+
+    .pill:active {
+        transform: none;
+    }
+}

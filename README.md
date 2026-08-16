@@ -25,7 +25,7 @@ npm run dev
 
 ## Roadmap
 - [X] Cache the DB results in Redis by DB last updated timestamp
-- [ ] Include filters by different attributes
+- [X] Include filters by different attributes
 - [ ] Support multiple databases to show places aside from restaurants (e.g. bars, shops, etc)
 - [ ] Allow the admin/moderator to edit a place rating
 - [X] Allow the user to submit a new place just by pasting the google maps link or clicking on the share button on google maps (Android only — iOS PWAs cannot register as share targets)
