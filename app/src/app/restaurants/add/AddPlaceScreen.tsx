@@ -10,6 +10,8 @@ import { UserRole } from "@/lib/constants/enums";
 import { GoogleMapsMarker } from "@/lib/constants/svg";
 import { PriceMap, RatingMap, RestaurantTypeMap } from "@/components/restaurant-items";
 import { extractMapsUrl, parseShareParams } from "@/lib/util/maps-share";
+import { parseCoordinatesFromUrl } from "@/lib/util/maps-coordinates";
+import { buildBrowserUrl } from "@/lib/util/open-in-browser";
 import { DatabaseSchema, Restaurant } from "@/lib/places/domain/restaurant";
 
 type Phase =
@@ -156,10 +158,19 @@ export default function AddPlaceScreen() {
     const [saved, setSaved] = useState<Restaurant | null>(null);
     const [pasteValue, setPasteValue] = useState("");
     const [pasteError, setPasteError] = useState<string | null>(null);
+    // The link the resolve settled on, kept so the "open in a browser" recovery can point at the
+    // permalink rather than the short link. Never written back over mapsUrl — see applyResolved.
+    const [resolvedUrl, setResolvedUrl] = useState("");
+    const [coordPaste, setCoordPaste] = useState("");
+    const [coordPasteError, setCoordPasteError] = useState<string | null>(null);
     const [statusLine, setStatusLine] = useState("Reading the link…");
     // Resolved in an effect rather than inline: `navigator` does not exist during the server
     // render, so branching on it directly would produce a hydration mismatch.
     const [canReadClipboard, setCanReadClipboard] = useState(false);
+    // Same reason: buildBrowserUrl branches on the platform, and reading navigator during the
+    // server render would make the first client render disagree with the markup. Empty until the
+    // effect runs, which buildBrowserUrl treats as "just use the plain link".
+    const [userAgent, setUserAgent] = useState("");
 
     // Guards the resolve effect so it fires once per share, not on every render.
     const resolveStarted = useRef(false);
@@ -208,6 +219,9 @@ export default function AddPlaceScreen() {
                 !!navigator.clipboard &&
                 typeof navigator.clipboard.readText === "function"
         );
+        setUserAgent(
+            typeof navigator !== "undefined" ? navigator.userAgent : ""
+        );
     }, []);
 
     useEffect(() => {
@@ -255,6 +269,7 @@ export default function AddPlaceScreen() {
             setLatitude(String(data.coordinates.latitude));
             setLongitude(String(data.coordinates.longitude));
         }
+        setResolvedUrl(data.resolvedUrl || "");
 
         // Note the resolved URL is deliberately NOT written back over mapsUrl. What gets saved
         // is the short link that was shared, because the resolved one carries per-request
@@ -418,6 +433,38 @@ export default function AddPlaceScreen() {
             }
         } catch (e) {
             setPasteError("Could not read the clipboard. Paste the link instead.");
+        }
+    };
+
+    // Takes the URL the user copied out of their browser's address bar after Maps rewrote it,
+    // and lifts the coordinates out. Deliberately tolerant of a whole clipboard rather than a
+    // tidy URL — people copy what the address bar gives them.
+    const applyPastedCoordinates = (text: string) => {
+        const found = parseCoordinatesFromUrl(text);
+        if (found === null) {
+            setCoordPasteError(
+                text.indexOf("google.") === -1
+                    ? "That doesn't look like a Google Maps link."
+                    : "No coordinates in that link yet — give the map a moment to load, then copy the address bar again."
+            );
+            return;
+        }
+
+        setCoordPasteError(null);
+        setLatitude(String(found.latitude));
+        setLongitude(String(found.longitude));
+        markEdited("coordinates");
+    };
+
+    const handleCoordPasteFromClipboard = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            setCoordPaste(text);
+            applyPastedCoordinates(text);
+        } catch (e) {
+            setCoordPasteError(
+                "Could not read the clipboard. Paste the link into the box instead."
+            );
         }
     };
 
@@ -1011,6 +1058,65 @@ export default function AddPlaceScreen() {
                             />
                         </div>
                     </div>
+                    {!hasCoordinates && (resolvedUrl || mapsUrl) && (
+                        <div className={styles.recovery}>
+                            <span className={styles.hint}>
+                                Links shared from the Maps app don&apos;t carry
+                                coordinates, and Google only works them out once
+                                its own page is running. Open the link in a
+                                browser — the address bar rewrites itself to one
+                                that has them — then copy it back here.
+                            </span>
+                            <a
+                                className={styles.secondaryBtn}
+                                href={buildBrowserUrl(
+                                    resolvedUrl || mapsUrl,
+                                    userAgent
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                Open the link in a browser
+                            </a>
+                            <textarea
+                                className={styles.input}
+                                value={coordPaste}
+                                onChange={(e) => setCoordPaste(e.target.value)}
+                                onBlur={(e) =>
+                                    e.target.value.trim() &&
+                                    applyPastedCoordinates(e.target.value)
+                                }
+                                rows={2}
+                                placeholder="Paste the rewritten link here"
+                                spellCheck={false}
+                            />
+                            <div className={styles.recoveryActions}>
+                                <button
+                                    type="button"
+                                    className={styles.secondaryBtn}
+                                    onClick={() =>
+                                        applyPastedCoordinates(coordPaste)
+                                    }
+                                >
+                                    Read coordinates
+                                </button>
+                                {canReadClipboard && (
+                                    <button
+                                        type="button"
+                                        className={styles.secondaryBtn}
+                                        onClick={handleCoordPasteFromClipboard}
+                                    >
+                                        Paste from clipboard
+                                    </button>
+                                )}
+                            </div>
+                            {coordPasteError && (
+                                <span className={styles.errorText}>
+                                    {coordPasteError}
+                                </span>
+                            )}
+                        </div>
+                    )}
                     <button
                         type="button"
                         className={styles.secondaryBtn}
@@ -1020,8 +1126,7 @@ export default function AddPlaceScreen() {
                     </button>
                     <span className={styles.hint}>
                         Without coordinates the place still saves — it just
-                        won&apos;t appear on the map until the next sync works
-                        them out.
+                        won&apos;t appear on the map.
                     </span>
                 </div>
             </details>

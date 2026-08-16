@@ -20,11 +20,22 @@
 
 import { parse } from "node-html-parser";
 import { isGoogleMapsUrl } from "./maps-share";
+import {
+    PLACE_PIN_PATTERN,
+    PLACE_URL_PATTERN,
+    isValidCoordinate,
+    parsePlacePin,
+} from "./maps-coordinates";
+
+// Re-exported so the server-side callers that already import them from here keep working, and
+// so there is still one obvious place to look for them.
+export { isValidCoordinate, parsePlacePin };
 
 export type FieldSource =
     | "og:title"
     | "place-pin"
     | "place-url"
+    | "place-label"
     | "final-url"
     | "redirect-url"
     | "blob"
@@ -70,54 +81,32 @@ export class MapsFetchError extends Error {
 // emits.
 const OG_TITLE_SEPARATOR = /\s*\u00b7\s*/;
 
-// The place URL appears inside a JS blob rather than the DOM, so this runs against raw HTML.
-// Matches both "/maps/place/" and "/maps/preview/place/", and both "@" and "%40" — the latter
-// is what the old scraper assumed was always present.
-//
-// The name segment is `*` rather than `+`: Google's own canonical form for a place is sometimes
-// "/maps/place//data=..." with the segment empty, and those coordinates are still good.
-const PLACE_URL_PATTERN =
-    /\/maps(?:\/preview)?\/place\/([^\/"\\?]*)\/(?:@|%40)(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/;
+// The label of a place URL, with no coordinates required after it. Sharing from the Maps *app*
+// produces a permalink of exactly this shape:
+//     /maps/place/Mercearia+do+Largo,+Tv.+São+Sebastião+6,+6100-737+Sertã/data=!4m2!3m1!1s0x…
+// — full name and postal address, no "@lat,lng" and no "!3d/!4d" pin anywhere. PLACE_URL_PATTERN
+// requires the coordinates, so it skips these entirely and the name has to come from the blob.
+// This is the same segment, read for its label alone.
+const PLACE_LABEL_PATTERN = /\/maps(?:\/preview)?\/place\/([^\/"\\?]+)(?:[\/"\\?]|$)/;
 
-// The "!3d<lat>!4d<lng>" pair inside a permalink's `data=` parameter. Unlike the "@lat,lng"
-// prefix — which is the map viewport and can sit anywhere near the place — this is the pin
-// itself, so it is preferred wherever both are present.
-const PLACE_PIN_PATTERN = /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/;
-
-// Inside the page's JS blob the place name appears as a quoted string immediately before its
-// own [<altitude>,<longitude>,<latitude>] triple:
+// Inside the page's JS blob the place label appears as a quoted string immediately before a
+// [<altitude>,<longitude>,<latitude>] triple:
 //     \"Restaurante Clube 1886\",[[3102.64,-8.9910923,38.9549507],null,...
 //
-// This matters because it is the only name source that survives the leaner page Google serves
-// to a datacenter IP: production saw sources={"name":null,"coordinates":"app-init-state"},
-// meaning the response had no canonical /maps/place/ URL and no usable og:title, but the blob
-// was present and parsing.
+// This is the only name source that survives the leaner page Google serves to a datacenter IP,
+// where the response has no canonical /maps/place/ URL and no usable og:title.
+//
+// Only the *label* is taken. The triple is deliberately parsed and thrown away: on the lean page
+// it is not the place's location but the map viewport, byte-identical to the one in
+// APP_INITIALIZATION_STATE, and the viewport is centred whereever Google geolocates the caller.
+// From Vercel that is London, which is how a grocer in Sertã came to be pinned in Southwark. It
+// is still matched rather than made optional because it is what anchors the pattern to a place
+// entry instead of any quoted string on the page.
 const BLOB_PLACE_PATTERN =
     /\\"([^"\\]{2,120})\\",\[\[-?[\d.]+,(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)\]/;
 
 // Google serves this as the og:title for pages that aren't a specific place.
 const GENERIC_TITLE = "google maps";
-
-export function isValidCoordinate(latitude: number, longitude: number): boolean {
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        return false;
-    }
-
-    if (latitude < -90 || latitude > 90) {
-        return false;
-    }
-
-    if (longitude < -180 || longitude > 180) {
-        return false;
-    }
-
-    // Null Island is always a parse failure, never a restaurant.
-    if (latitude === 0 && longitude === 0) {
-        return false;
-    }
-
-    return true;
-}
 
 export function parseOgTitle(
     html: string
@@ -190,35 +179,65 @@ export function parsePlaceUrl(text: string): {
         return null;
     }
 
-    let name: string | null = null;
-    let address: string | null = null;
-
+    // The segment is "<name>, <address>" when Google includes the address at all.
     const decoded = decodePlaceSegment(match[1]);
-    if (decoded !== null) {
-        // The segment is "<name>, <address>" when Google includes the address at all.
-        const separatorIndex = decoded.indexOf(", ");
-        if (separatorIndex === -1) {
-            name = decoded.trim() || null;
-        } else {
-            name = decoded.substring(0, separatorIndex).trim() || null;
-            address = decoded.substring(separatorIndex + 2).trim() || null;
-        }
-    }
+    const split =
+        decoded === null ? { name: null, address: null } : splitLabel(decoded);
 
     return {
-        name: name,
-        address: address,
+        name: split.name,
+        address: split.address,
         latitude: latitude,
         longitude: longitude,
     };
 }
 
-export function parseBlobPlace(html: string): {
-    name: string;
+// A label is sometimes just the name ("Xiaolongkan Hot Pot") and sometimes name plus address
+// ("Lupita Pizzaria Alvalade, Av. da Igreja 15D, 1700-237 Lisboa"), so it splits on the first
+// ", ". Shared by all three label sources so they cannot drift apart.
+function splitLabel(label: string): {
+    name: string | null;
     address: string | null;
-    latitude: number;
-    longitude: number;
-} | null {
+} {
+    const separatorIndex = label.indexOf(", ");
+    if (separatorIndex === -1) {
+        return { name: label.trim() || null, address: null };
+    }
+
+    return {
+        name: label.substring(0, separatorIndex).trim() || null,
+        address: label.substring(separatorIndex + 2).trim() || null,
+    };
+}
+
+// Name and address from a place URL that carries no coordinates — the shape the Maps app
+// produces. Coordinates are not returned because there are none to return.
+export function parsePlaceLabel(
+    text: string
+): { name: string | null; address: string | null } | null {
+    const match = text.match(PLACE_LABEL_PATTERN);
+    if (match === null) {
+        return null;
+    }
+
+    const decoded = decodePlaceSegment(match[1]);
+    if (decoded === null) {
+        return null;
+    }
+
+    const split = splitLabel(decoded);
+    if (split.name === null) {
+        return null;
+    }
+
+    return split;
+}
+
+// Returns the place's label only. See BLOB_PLACE_PATTERN: the triple that follows it is the map
+// viewport, not the place, so there are deliberately no coordinates here.
+export function parseBlobPlace(
+    html: string
+): { name: string; address: string | null } | null {
     const match = html.match(BLOB_PLACE_PATTERN);
     if (match === null) {
         return null;
@@ -228,46 +247,18 @@ export function parseBlobPlace(html: string): {
     const longitude = parseFloat(match[2]);
     const latitude = parseFloat(match[3]);
 
+    // The coordinates are checked but never returned: a triple that is not a plausible
+    // coordinate pair means this was some other quoted string, not a place entry.
     if (label.length === 0 || !isValidCoordinate(latitude, longitude)) {
         return null;
     }
 
-    // The label is sometimes just the name ("Xiaolongkan Hot Pot") and sometimes name plus
-    // address ("Lupita Pizzaria Alvalade, Av. da Igreja 15D, 1700-237 Lisboa"), so it is split
-    // on the first ", " exactly as the place-URL segment is.
-    const separatorIndex = label.indexOf(", ");
-    if (separatorIndex === -1) {
-        return {
-            name: label,
-            address: null,
-            latitude: latitude,
-            longitude: longitude,
-        };
-    }
-
-    return {
-        name: label.substring(0, separatorIndex).trim(),
-        address: label.substring(separatorIndex + 2).trim() || null,
-        latitude: latitude,
-        longitude: longitude,
-    };
-}
-
-export function parsePlacePin(
-    text: string
-): { latitude: number; longitude: number } | null {
-    const match = text.match(PLACE_PIN_PATTERN);
-    if (match === null) {
+    const split = splitLabel(label);
+    if (split.name === null) {
         return null;
     }
 
-    const latitude = parseFloat(match[1]);
-    const longitude = parseFloat(match[2]);
-    if (!isValidCoordinate(latitude, longitude)) {
-        return null;
-    }
-
-    return { latitude: latitude, longitude: longitude };
+    return { name: split.name, address: split.address };
 }
 
 function firstNonNull<T>(
@@ -312,9 +303,14 @@ export function parseGoogleMapsHtml(
 
     // The pin is searched across the whole chain, the final URL and the page body, because any
     // of them may be the only one carrying a `data=` parameter.
-    const pinCandidates = finalUrl ? [finalUrl].concat(hops) : hops;
-    const pinFromUrl = firstNonNull(pinCandidates, parsePlacePin);
+    const urlCandidates = finalUrl ? [finalUrl].concat(hops) : hops;
+    const pinFromUrl = firstNonNull(urlCandidates, parsePlacePin);
     const pinFromHtml = parsePlacePin(html);
+
+    // Label-only fallback for URLs with no coordinates at all, which is every link shared from
+    // the Maps app. Searched over the URLs rather than the body: the body's first
+    // "/maps/place/..." need not be this place, whereas the resolved URL is by definition.
+    const fromLabel = firstNonNull(urlCandidates, parsePlaceLabel);
 
     // Name and address both come from og:title first: it separates the two with an explicit
     // "·", whereas splitting the URL segment on ", " guesses wrong whenever the name itself
@@ -336,6 +332,11 @@ export function parseGoogleMapsHtml(
     if (result.name === null && fromRedirect !== null && fromRedirect.name !== null) {
         result.name = fromRedirect.name;
         result.sources.name = "redirect-url";
+    }
+
+    if (result.name === null && fromLabel !== null && fromLabel.name !== null) {
+        result.name = fromLabel.name;
+        result.sources.name = "place-label";
     }
 
     if (result.name === null && fromHtml !== null && fromHtml.name !== null) {
@@ -366,6 +367,11 @@ export function parseGoogleMapsHtml(
         result.sources.address = "redirect-url";
     }
 
+    if (result.address === null && fromLabel !== null && fromLabel.address !== null) {
+        result.address = fromLabel.address;
+        result.sources.address = "place-label";
+    }
+
     if (result.address === null && fromHtml !== null && fromHtml.address !== null) {
         result.address = fromHtml.address;
         result.sources.address = "place-url";
@@ -376,12 +382,12 @@ export function parseGoogleMapsHtml(
         result.sources.address = "blob";
     }
 
-    // Coordinate precedence runs from "definitely this place" to "probably this place", and
-    // stops there. Nothing viewport-derived is ever accepted as a last resort: the map centre
-    // on the lean page Google serves to a datacenter is wherever *Google* thinks the caller is,
-    // which in production meant a restaurant in Portugal being pinned in London. Coordinates
-    // that get written back to Notion and then look settled are worse than no coordinates at
-    // all, so an unresolvable place is left blank for the form to fill in by hand.
+    // Every coordinate source here is a *coordinate* Google published for this place, in a URL
+    // or in the page's `data=` parameter. Nothing viewport-derived is accepted, at any priority:
+    // the map centre on a lean page is wherever Google thinks the caller is, which from Vercel
+    // is London. Coordinates that get written back to Notion and then look settled are worse
+    // than no coordinates at all, so a link that carries none — every Maps-app share does — is
+    // left blank for the form to fill in by hand.
     if (pinFromUrl !== null) {
         result.latitude = pinFromUrl.latitude;
         result.longitude = pinFromUrl.longitude;
@@ -402,12 +408,6 @@ export function parseGoogleMapsHtml(
         result.latitude = fromHtml.latitude;
         result.longitude = fromHtml.longitude;
         result.sources.coordinates = "place-url";
-    } else if (fromBlob !== null) {
-        // The blob triple belongs to the place itself, so it is trustworthy in a way
-        // APP_INITIALIZATION_STATE's leading triple — the viewport centre — never was.
-        result.latitude = fromBlob.latitude;
-        result.longitude = fromBlob.longitude;
-        result.sources.coordinates = "blob";
     }
 
     return result;

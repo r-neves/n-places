@@ -51,6 +51,22 @@ describe("Google Maps scraping (live network)", () => {
         expect(place.longitude).toBeCloseTo(-8.098671, 4);
     }, 20000);
 
+    // The same grocer, shared from the Maps app rather than the web. Its permalink carries a
+    // feature ID and nothing else — no "@lat,lng", no pin — and the page behind it does not
+    // contain the coordinates in any form. So the correct result is name and address, and no
+    // location: the previous behaviour was to hand back the map viewport, which put this place
+    // in London. Asserting the null is the point of the test.
+    test("returns no coordinates for a link that carries none", async () => {
+        const place = await resolveGoogleMapsPlace(
+            "https://maps.app.goo.gl/mA3Yy2DizAz8chFh8"
+        );
+
+        expect(place.name).toBe("Mercearia do Largo");
+        expect(place.address).toContain("Sertã");
+        expect(place.latitude).toBeNull();
+        expect(place.longitude).toBeNull();
+    }, 20000);
+
     test("returns null rather than throwing for an unresolvable link", async () => {
         const coordinates = await getCoordinatesFromMapsUrl(
             3,
