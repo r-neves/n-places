@@ -317,6 +317,11 @@
     font-family: inherit;
     font-weight: 500;
     cursor: pointer;
+    /* The "open the link in a browser" control is an anchor, not a button, so that Android can
+       hand the intent: URL to Chrome. These keep it looking like every other secondary button. */
+    display: inline-block;
+    text-align: center;
+    text-decoration: none;
 }
 
 .secondaryBtn:disabled {
@@ -456,6 +461,25 @@
 .errorText {
     font-size: 13px;
     color: #eb5757;
+}
+
+/* Shown only when a link carried no coordinates — which is every link shared from the Maps app.
+   Set apart from the fields above it because it is a detour, not another thing to fill in. */
+.recovery {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: #f9fafb;
+    border: 1px solid #ececec;
+}
+
+.recoveryActions {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .successMark {

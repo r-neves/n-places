@@ -20,6 +20,16 @@
 
 import { parse } from "node-html-parser";
 import { isGoogleMapsUrl } from "./maps-share";
+import {
+    PLACE_PIN_PATTERN,
+    PLACE_URL_PATTERN,
+    isValidCoordinate,
+    parsePlacePin,
+} from "./maps-coordinates";
+
+// Re-exported so the server-side callers that already import them from here keep working, and
+// so there is still one obvious place to look for them.
+export { isValidCoordinate, parsePlacePin };
 
 export type FieldSource =
     | "og:title"
@@ -71,20 +81,6 @@ export class MapsFetchError extends Error {
 // emits.
 const OG_TITLE_SEPARATOR = /\s*\u00b7\s*/;
 
-// The place URL appears inside a JS blob rather than the DOM, so this runs against raw HTML.
-// Matches both "/maps/place/" and "/maps/preview/place/", and both "@" and "%40" — the latter
-// is what the old scraper assumed was always present.
-//
-// The name segment is `*` rather than `+`: Google's own canonical form for a place is sometimes
-// "/maps/place//data=..." with the segment empty, and those coordinates are still good.
-const PLACE_URL_PATTERN =
-    /\/maps(?:\/preview)?\/place\/([^\/"\\?]*)\/(?:@|%40)(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/;
-
-// The "!3d<lat>!4d<lng>" pair inside a permalink's `data=` parameter. Unlike the "@lat,lng"
-// prefix — which is the map viewport and can sit anywhere near the place — this is the pin
-// itself, so it is preferred wherever both are present.
-const PLACE_PIN_PATTERN = /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/;
-
 // The label of a place URL, with no coordinates required after it. Sharing from the Maps *app*
 // produces a permalink of exactly this shape:
 //     /maps/place/Mercearia+do+Largo,+Tv.+São+Sebastião+6,+6100-737+Sertã/data=!4m2!3m1!1s0x…
@@ -111,27 +107,6 @@ const BLOB_PLACE_PATTERN =
 
 // Google serves this as the og:title for pages that aren't a specific place.
 const GENERIC_TITLE = "google maps";
-
-export function isValidCoordinate(latitude: number, longitude: number): boolean {
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        return false;
-    }
-
-    if (latitude < -90 || latitude > 90) {
-        return false;
-    }
-
-    if (longitude < -180 || longitude > 180) {
-        return false;
-    }
-
-    // Null Island is always a parse failure, never a restaurant.
-    if (latitude === 0 && longitude === 0) {
-        return false;
-    }
-
-    return true;
-}
 
 export function parseOgTitle(
     html: string
@@ -284,23 +259,6 @@ export function parseBlobPlace(
     }
 
     return { name: split.name, address: split.address };
-}
-
-export function parsePlacePin(
-    text: string
-): { latitude: number; longitude: number } | null {
-    const match = text.match(PLACE_PIN_PATTERN);
-    if (match === null) {
-        return null;
-    }
-
-    const latitude = parseFloat(match[1]);
-    const longitude = parseFloat(match[2]);
-    if (!isValidCoordinate(latitude, longitude)) {
-        return null;
-    }
-
-    return { latitude: latitude, longitude: longitude };
 }
 
 function firstNonNull<T>(
