@@ -53,6 +53,7 @@ export default function EditPlaceScreen() {
     const [ambience, setAmbience] = useState<string[]>([]);
     const [recommender, setRecommender] = useState("");
     const [description, setDescription] = useState("");
+    const [review, setReview] = useState("");
 
     const [saveError, setSaveError] = useState<string | null>(null);
     const [coordPaste, setCoordPaste] = useState("");
@@ -174,6 +175,7 @@ export default function EditPlaceScreen() {
                 setDishPrice(place.dishPrice || "");
                 setRecommender(place.recommender || "");
                 setDescription(place.description || "");
+                setReview(place.review || "");
                 setTags((place.tags || []).map((t) => t.tag));
                 setAmbience((place.ambience || []).map((t) => t.tag));
 
@@ -298,6 +300,7 @@ export default function EditPlaceScreen() {
                     ambience: ambience,
                     recommender: recommender,
                     description: description,
+                    review: review,
                     coordinates: hasCoordinates
                         ? {
                               latitude: parsedLatitude,
@@ -593,6 +596,24 @@ export default function EditPlaceScreen() {
                         el.style.height = el.scrollHeight + "px";
                     }}
                     placeholder="Anything worth remembering?"
+                />
+            </div>
+
+            {/* Only on the edit screen, never on add: a review is what you have to say after
+                going, so there is nothing to write when the place is first saved. */}
+            <div className={styles.field}>
+                <span className={styles.caption}>Review</span>
+                <textarea
+                    className={styles.textarea}
+                    value={review}
+                    rows={3}
+                    onChange={(e) => setReview(e.target.value)}
+                    onInput={(e) => {
+                        const el = e.currentTarget;
+                        el.style.height = "auto";
+                        el.style.height = el.scrollHeight + "px";
+                    }}
+                    placeholder="How was it?"
                 />
             </div>
 

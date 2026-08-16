@@ -109,6 +109,7 @@ export function placeFromRequestBody(
             ),
             recommender: asString(body?.recommender),
             description: asString(body?.description),
+            review: asString(body?.review),
             metadata: metadata,
         },
     };

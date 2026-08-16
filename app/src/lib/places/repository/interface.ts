@@ -60,6 +60,7 @@ export interface RepoNewRestaurant {
 	ambience: string[];
 	recommender: string;
 	description: string;
+	review: string;
 	metadata: RepoRestaurantMetadata | null;
 }
 

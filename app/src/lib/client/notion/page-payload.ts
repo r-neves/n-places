@@ -114,8 +114,8 @@ export function buildCreatePagePayload(
         set("metadata", richText(JSON.stringify(place.metadata)));
     }
 
-    // "review" is intentionally never set on create — it is written later, by a human, once the
-    // place has actually been visited.
+    // "review" is intentionally never set on create, even though the field now exists on the
+    // type for the edit screen's sake — a place cannot be reviewed before it has been visited.
 
     return {
         parent: { type: "data_source_id", data_source_id: dataSourceID },
@@ -170,6 +170,9 @@ export function buildUpdatePagePayload(
     set("location", richTextOrEmpty(place.location));
     set("recommender", richTextOrEmpty(place.recommender));
     set("description", richTextOrEmpty(place.description));
+    // Writable here but not on create: a review is what you have to say after going, so the
+    // edit screen is the only place it can meaningfully be filled in.
+    set("review", richTextOrEmpty(place.review));
 
     // Exception 1. A status property has no empty state — Notion rejects null — and this
     // database models "not visited" as an option rather than an absent value. The caller always
@@ -191,8 +194,6 @@ export function buildUpdatePagePayload(
     ) {
         set("metadata", richText(JSON.stringify(place.metadata)));
     }
-
-    // "review" is deliberately left out, as it is on create: nothing in either form writes it.
 
     return { properties: properties };
 }

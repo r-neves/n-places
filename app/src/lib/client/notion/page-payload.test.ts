@@ -84,6 +84,7 @@ function newPlace(overrides?: Partial<RepoNewRestaurant>): RepoNewRestaurant {
             ambience: ["Cozy"],
             recommender: "Sofia",
             description: "Great hotpot",
+            review: "Would go again",
             metadata: {
                 coordinates: { latitude: 38.767198, longitude: -9.0991259 },
             },
@@ -417,10 +418,27 @@ describe("buildUpdatePagePayload", () => {
         });
     });
 
-    test("never writes the review, same as create", () => {
+    // The one field the update writes that create does not: you cannot review a place you
+    // have not been to, so it only becomes fillable once the place exists.
+    test("writes the review, unlike create", () => {
+        expect(buildUpdatePagePayload(newPlace(), NAMES).properties.Review).toEqual(
+            {
+                rich_text: [
+                    { type: "text", text: { content: "Would go again" } },
+                ],
+            }
+        );
+
         expect(
-            buildUpdatePagePayload(newPlace(), NAMES).properties
+            buildCreatePagePayload(DATA_SOURCE_ID, newPlace(), NAMES).properties
         ).not.toHaveProperty("Review");
+    });
+
+    test("clears the review when it is emptied", () => {
+        expect(
+            buildUpdatePagePayload(newPlace({ review: "" }), NAMES).properties
+                .Review
+        ).toEqual({ rich_text: [] });
     });
 
     test("skips columns the database does not have", () => {

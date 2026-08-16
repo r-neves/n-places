@@ -61,5 +61,6 @@ export interface NewRestaurant {
 	ambience: string[];
 	recommender: string;
 	description: string;
+	review: string;
 	metadata: RestaurantMetadata | null;
 }
