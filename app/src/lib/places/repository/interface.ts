@@ -32,8 +32,8 @@ export interface RepoDatabaseSchema {
 			type: string;
 			name: string;
 			// Notion returns these as arrays. `status` was previously typed as an object map,
-			// but every consumer indexes it numerically (see editRating's options[0] and
-			// options.slice(1, 6)), so an array is what it has always actually been.
+			// but every consumer iterates them (schemaOptions maps over the list to build the
+			// pickers), so an array is what it has always actually been.
 			status?: {
 				options?: RepoSchemaOption[];
 			};
@@ -67,9 +67,9 @@ export interface RestaurantsRepository {
 	getRestaurant(id: string): Promise<RepoRestaurant | null>;
     getRestaurants(lastModifiedDate: Date): Promise<RepoRestaurant[]>;
     getDBLastUpdatedDate(): Promise<Date>;
-	editRating(placeID: string, propertyID: string, ratingID: string): Promise<void>;
 	getDatabaseSchema(): Promise<RepoDatabaseSchema>;
 	createRestaurant(place: RepoNewRestaurant): Promise<RepoRestaurant>;
+	updateRestaurant(id: string, place: RepoNewRestaurant): Promise<RepoRestaurant>;
 	findByMapsUrl(mapsUrl: string): Promise<RepoRestaurant | null>;
 	listRecommenders(): Promise<string[]>;
 }

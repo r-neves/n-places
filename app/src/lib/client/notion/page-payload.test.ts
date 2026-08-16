@@ -1,6 +1,9 @@
 import { describe, expect, test } from "@jest/globals";
 import { RepoDatabaseSchema, RepoNewRestaurant } from "../../places/repository/interface";
-import { buildCreatePagePayload } from "./create-payload";
+import {
+    buildCreatePagePayload,
+    buildUpdatePagePayload,
+} from "./page-payload";
 import {
     matchSchemaOption,
     matchSchemaOptions,
@@ -294,5 +297,137 @@ describe("buildCreatePagePayload", () => {
 
         expect(name.title[0].text.content.length).toBe(200);
         expect(description.rich_text[0].text.content.length).toBe(2000);
+    });
+});
+
+describe("buildUpdatePagePayload", () => {
+    test("carries no parent — the page already exists", () => {
+        const payload = buildUpdatePagePayload(newPlace(), NAMES);
+
+        expect(payload).not.toHaveProperty("parent");
+        expect(payload.properties.Name).toEqual({
+            title: [{ type: "text", text: { content: "Xiaolongkan Hot Pot" } }],
+        });
+    });
+
+    // The whole reason update needs its own builder: create omits blank fields, which on an
+    // update would silently leave the old value in place and make a field impossible to empty.
+    test("sends the empty form of every cleared field rather than omitting it", () => {
+        const payload = buildUpdatePagePayload(
+            newPlace({
+                location: "",
+                recommender: "",
+                description: "",
+                dishPrice: "",
+                tags: [],
+                ambience: [],
+                mapsUrl: "",
+            }),
+            NAMES
+        );
+
+        expect(payload.properties.Location).toEqual({ rich_text: [] });
+        expect(payload.properties.Recommender).toEqual({ rich_text: [] });
+        expect(payload.properties.Description).toEqual({ rich_text: [] });
+        expect(payload.properties["Dish Price"]).toEqual({ select: null });
+        expect(payload.properties.Type).toEqual({ multi_select: [] });
+        expect(payload.properties.Ambience).toEqual({ multi_select: [] });
+        expect(payload.properties.Map).toEqual({ url: null });
+    });
+
+    test("whitespace-only text counts as cleared", () => {
+        const payload = buildUpdatePagePayload(
+            newPlace({ recommender: "   " }),
+            NAMES
+        );
+
+        expect(payload.properties.Recommender).toEqual({ rich_text: [] });
+    });
+
+    test("writes the values it is given", () => {
+        const payload = buildUpdatePagePayload(
+            newPlace({
+                rating: "8/10",
+                dishPrice: "5-12 €",
+                tags: ["Asian", "Sushi"],
+                ambience: ["Cozy"],
+            }),
+            NAMES
+        );
+
+        expect(payload.properties.Rating).toEqual({
+            status: { name: "8/10" },
+        });
+        expect(payload.properties["Dish Price"]).toEqual({
+            select: { name: "5-12 €" },
+        });
+        expect(payload.properties.Type).toEqual({
+            multi_select: [{ name: "Asian" }, { name: "Sushi" }],
+        });
+        expect(payload.properties.Ambience).toEqual({
+            multi_select: [{ name: "Cozy" }],
+        });
+    });
+
+    // A status property has no empty state, so a blank rating must leave the column untouched
+    // rather than send null, which Notion rejects.
+    test("omits the rating rather than trying to null a status", () => {
+        const payload = buildUpdatePagePayload(
+            newPlace({ rating: "" }),
+            NAMES
+        );
+
+        expect(payload.properties).not.toHaveProperty("Rating");
+    });
+
+    // Coordinates are write-only on update: blanking them in the form must not drop the pin.
+    test("leaves existing coordinates alone when none are supplied", () => {
+        expect(
+            buildUpdatePagePayload(newPlace({ metadata: null }), NAMES)
+                .properties
+        ).not.toHaveProperty("Metadata");
+
+        expect(
+            buildUpdatePagePayload(
+                newPlace({
+                    metadata: { coordinates: { latitude: 0, longitude: 0 } },
+                }),
+                NAMES
+            ).properties
+        ).not.toHaveProperty("Metadata");
+    });
+
+    test("writes coordinates that are usable", () => {
+        const payload = buildUpdatePagePayload(newPlace(), NAMES);
+
+        expect(payload.properties.Metadata).toEqual({
+            rich_text: [
+                {
+                    type: "text",
+                    text: {
+                        content: JSON.stringify({
+                            coordinates: {
+                                latitude: 38.767198,
+                                longitude: -9.0991259,
+                            },
+                        }),
+                    },
+                },
+            ],
+        });
+    });
+
+    test("never writes the review, same as create", () => {
+        expect(
+            buildUpdatePagePayload(newPlace(), NAMES).properties
+        ).not.toHaveProperty("Review");
+    });
+
+    test("skips columns the database does not have", () => {
+        const payload = buildUpdatePagePayload(newPlace(), {
+            name: "Name",
+        });
+
+        expect(Object.keys(payload.properties)).toEqual(["Name"]);
     });
 });
