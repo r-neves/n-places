@@ -64,6 +64,8 @@ export default class NotionAPIClient {
             dishPrice: place.dishPrice,
             recommender: place.recommender,
             description: place.description,
+            // Not place.review: create never writes it, so a new page has none.
+            review: "",
             tags: place.tags.map((tag) => ({ tag: tag, color: "default" })),
             ambience: place.ambience.map((tag) => ({ tag: tag, color: "default" })),
             metadata: place.metadata ?? { coordinates: { latitude: 0, longitude: 0 } },

@@ -5,7 +5,7 @@ import {
     RepoRestaurantMetadata,
 } from "../../places/repository/interface";
 import VercelKVCache from "@/lib/cache/vercel-kv";
-import { buildCreatePagePayload } from "./create-payload";
+import { buildCreatePagePayload, buildUpdatePagePayload } from "./page-payload";
 import { NotionAPIError, notionErrorFromResponse } from "./errors";
 import { resolvePropertyNames } from "./property-map";
 
@@ -132,37 +132,19 @@ export default class NotionAPIClient {
         return patchPlaceMetadata(databaseID, placeID, metadata);
     }
 
-    static async patchPlaceRating(
-        databaseID: string,
-        placeID: string,
-        propertyID: string,
-        ratingID: string
-    ): Promise<void> {
-        await fetch(`${NOTION_API_URL}/pages/${placeID}`, {
-            method: "PATCH",
-            headers: {
-                Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
-                "Notion-Version": `${process.env.NOTION_API_VERSION}`,
-                "Content-type": "application/json",
-            },
-            body: JSON.stringify({
-                properties: {
-                    Rating: {
-                        id: propertyID,
-                        status: {
-                            id: ratingID,
-                        },
-                    },
-                },
-            }),
-        });
-    }
-
     static async createPlace(
         databaseID: string,
         place: RepoNewRestaurant
     ): Promise<RepoRestaurant> {
         return createPlace(databaseID, place);
+    }
+
+    static async updatePlace(
+        databaseID: string,
+        placeID: string,
+        place: RepoNewRestaurant
+    ): Promise<RepoRestaurant> {
+        return updatePlace(databaseID, placeID, place);
     }
 
     static async getDatabaseSchema(
@@ -414,7 +396,7 @@ async function createPlace(
     }
 
     const payload = buildCreatePagePayload(databaseID, place, propertyNames);
-    const created = await postPageWithRetry(payload);
+    const created = await sendPageWithRetry(`${NOTION_API_URL}/pages`, "POST", payload);
     const restaurant = jsonEntryToPlaceItem(created);
 
     await insertPlaceIntoCache(databaseID, restaurant);
@@ -422,10 +404,49 @@ async function createPlace(
     return restaurant;
 }
 
-async function postPageWithRetry(payload: object): Promise<any> {
+async function updatePlace(
+    databaseID: string,
+    placeID: string,
+    place: RepoNewRestaurant
+): Promise<RepoRestaurant> {
+    // Same reason as createPlace: the write has to use the database's own property casing.
+    const schema = await getDatabaseSchema(databaseID);
+    const propertyNames = resolvePropertyNames(schema);
+
+    if (propertyNames.name === undefined) {
+        throw new NotionAPIError(
+            500,
+            "schema_error",
+            "Could not find a title property in the Notion data source"
+        );
+    }
+
+    const payload = buildUpdatePagePayload(place, propertyNames);
+    const updated = await sendPageWithRetry(
+        `${NOTION_API_URL}/pages/${placeID}`,
+        "PATCH",
+        payload
+    );
+    const restaurant = jsonEntryToPlaceItem(updated);
+
+    // Notion returns the whole updated page, so the cache can be refreshed from the response
+    // rather than re-synced. insertPlaceIntoCache upserts by id, which is what an edit needs —
+    // otherwise the map would keep showing the old values until the next full sync.
+    await insertPlaceIntoCache(databaseID, restaurant);
+
+    return restaurant;
+}
+
+// Shared by create (POST /pages) and update (PATCH /pages/{id}) — the retry rules are the
+// same for both, only the target differs.
+async function sendPageWithRetry(
+    url: string,
+    method: string,
+    payload: object
+): Promise<any> {
     for (let attempt = 0; attempt < 2; attempt++) {
-        const response = await fetch(`${NOTION_API_URL}/pages`, {
-            method: "POST",
+        const response = await fetch(url, {
+            method: method,
             headers: {
                 Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
                 "Notion-Version": `${process.env.NOTION_API_VERSION}`,
@@ -444,7 +465,7 @@ async function postPageWithRetry(payload: object): Promise<any> {
         const isLastAttempt = attempt === 1;
         if (isLastAttempt || RETRYABLE_NOTION_CODES.indexOf(error.code) === -1) {
             console.error(
-                "Notion create failed: %s (%d) request_id=%s",
+                "Notion page write failed: %s (%d) request_id=%s",
                 error.code,
                 error.status,
                 error.requestId
@@ -457,7 +478,7 @@ async function postPageWithRetry(payload: object): Promise<any> {
             : DEFAULT_RETRY_AFTER_MS;
 
         console.warn(
-            "Notion create failed with %s, retrying in %dms",
+            "Notion page write failed with %s, retrying in %dms",
             error.code,
             retryAfterMs
         );
@@ -468,7 +489,7 @@ async function postPageWithRetry(payload: object): Promise<any> {
     }
 
     // Unreachable: the loop either returns or throws.
-    throw new NotionAPIError(500, "unknown_error", "Notion create failed");
+    throw new NotionAPIError(500, "unknown_error", "Notion page write failed");
 }
 
 // Puts a freshly created place into the cache so it shows on the map immediately rather than

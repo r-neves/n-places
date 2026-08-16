@@ -1,5 +1,5 @@
 import { describe, expect, test } from "@jest/globals";
-import { buildCreatePagePayload } from "./create-payload";
+import { buildCreatePagePayload } from "./page-payload";
 import {
     matchSchemaOption,
     matchSchemaOptions,
@@ -64,6 +64,7 @@ describe("create payload against the live schema", () => {
                 ambience: ["Modern"],
                 recommender: "Rodrigo",
                 description: "probe",
+                review: "",
                 metadata: {
                     coordinates: { latitude: 38.9549507, longitude: -8.9910923 },
                 },

@@ -34,8 +34,8 @@ export interface DatabaseSchema {
 			type: string;
 			name: string;
 			// Notion returns these as arrays. `status` was previously typed as an object map,
-			// but every consumer indexes it numerically (see editRating's options[0] and
-			// options.slice(1, 6)), so an array is what it has always actually been.
+			// but every consumer iterates them (schemaOptions maps over the list to build the
+			// pickers), so an array is what it has always actually been.
 			status?: {
 				options?: SchemaOption[];
 			};
@@ -61,5 +61,6 @@ export interface NewRestaurant {
 	ambience: string[];
 	recommender: string;
 	description: string;
+	review: string;
 	metadata: RestaurantMetadata | null;
 }

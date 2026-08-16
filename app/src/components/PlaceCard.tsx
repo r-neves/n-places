@@ -94,7 +94,7 @@ export default function PlaceCard({
                     <button
                         className={styles.editBtn}
                         onClick={() => {
-                            window.location.href = `/restaurants/editRating?placeId=${place.id}`;
+                            window.location.href = `/restaurants/edit?placeId=${place.id}`;
                         }}
                     >
                         <EditIcon />

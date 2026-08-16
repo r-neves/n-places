@@ -1,7 +1,7 @@
 // Server-side admin gate for routes that write.
 //
-// Every role check elsewhere in this app is client-side (Map.tsx, PlaceCard.tsx, the editRating
-// page), which is fine for deciding what to render but is not a security boundary — the role
+// Every role check elsewhere in this app is client-side (Map.tsx, PlaceCard.tsx, the add and
+// edit screens), which is fine for deciding what to render but is not a security boundary — the role
 // comes from a fetch the client controls. Anything that mutates Notion needs the check to happen
 // on the server, against the session cookie, which is what this does.
 

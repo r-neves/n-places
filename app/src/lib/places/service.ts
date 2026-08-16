@@ -5,9 +5,9 @@ export interface RestaurantsService {
     getRestaurant(id: string): Promise<Restaurant | null>;
     getRestaurants(lastModifiedDate: Date): Promise<Restaurant[]>;
     getDBLastUpdatedDate(): Promise<Date>;
-    editRating(placeID: string, propertyID: string, ratingID: string): Promise<void>;
     getDatabaseSchema(): Promise<DatabaseSchema>;
     createRestaurant(place: NewRestaurant): Promise<Restaurant>;
+    updateRestaurant(id: string, place: NewRestaurant): Promise<Restaurant>;
     findByMapsUrl(mapsUrl: string): Promise<Restaurant | null>;
     listRecommenders(): Promise<string[]>;
 }
@@ -31,16 +31,19 @@ export class RestaurantsImpl implements RestaurantsService {
         return this.repository.getDBLastUpdatedDate();
     }
 
-    async editRating(placeID: string, propertyID: string, ratingID: string): Promise<void> {
-        return this.repository.editRating(placeID, propertyID, ratingID);
-    }
-
     async getDatabaseSchema(): Promise<DatabaseSchema> {
         return this.repository.getDatabaseSchema();
     }
 
     async createRestaurant(place: NewRestaurant): Promise<Restaurant> {
         return this.repository.createRestaurant(place);
+    }
+
+    async updateRestaurant(
+        id: string,
+        place: NewRestaurant
+    ): Promise<Restaurant> {
+        return this.repository.updateRestaurant(id, place);
     }
 
     async findByMapsUrl(mapsUrl: string): Promise<Restaurant | null> {

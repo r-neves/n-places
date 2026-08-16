@@ -83,19 +83,6 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
         return restaurants;
     }
 
-    async editRating(
-        placeID: string,
-        propertyID: string,
-        ratingID: string,
-    ): Promise<void> {
-        await NotionAPIClient.patchPlaceRating(
-            process.env.RESTAURANTS_DATA_SOURCE_ID!,
-            placeID,
-            propertyID,
-            ratingID,
-        );
-    }
-
     async getDatabaseSchema() {
         return await NotionAPIClient.getDatabaseSchema(
             process.env.RESTAURANTS_DATA_SOURCE_ID!
@@ -105,6 +92,17 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
     async createRestaurant(place: RepoNewRestaurant): Promise<RepoRestaurant> {
         return await NotionAPIClient.createPlace(
             process.env.RESTAURANTS_DATA_SOURCE_ID!,
+            place
+        );
+    }
+
+    async updateRestaurant(
+        id: string,
+        place: RepoNewRestaurant
+    ): Promise<RepoRestaurant> {
+        return await NotionAPIClient.updatePlace(
+            process.env.RESTAURANTS_DATA_SOURCE_ID!,
+            id,
             place
         );
     }
