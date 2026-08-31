@@ -3,11 +3,13 @@ import {
     RepoNewRestaurant,
     RepoRestaurant,
     RepoRestaurantMetadata,
+    RepoRestaurantProblem,
 } from "../../places/repository/interface";
 import VercelKVCache from "@/lib/cache/vercel-kv";
 import { buildCreatePagePayload, buildUpdatePagePayload } from "./page-payload";
 import { NotionAPIError, notionErrorFromResponse } from "./errors";
 import { resolvePropertyNames } from "./property-map";
+import { normalizeMapsUrl } from "@/lib/util/format";
 
 const NOTION_API_URL = "https://api.notion.com/v1";
 
@@ -23,6 +25,7 @@ interface POSTBody {
 
 interface CacheValue {
     restaurantMap: Object; // map converted to object to be json serializable
+    problems: RepoRestaurantProblem[];
     lastUpdated: string;
 }
 
@@ -152,6 +155,19 @@ export default class NotionAPIClient {
     ): Promise<RepoDatabaseSchema> {
         return getDatabaseSchema(databaseID);
     }
+
+    static async archivePlace(
+        databaseID: string,
+        placeID: string
+    ): Promise<void> {
+        return archivePlace(databaseID, placeID);
+    }
+
+    static async getProblems(
+        databaseID: string
+    ): Promise<RepoRestaurantProblem[]> {
+        return getProblems(databaseID);
+    }
 }
 
 async function getDatabaseSchema(
@@ -269,7 +285,8 @@ async function fetchPlacesFromNotion(
             "Cache not found for database %s, fetching all results",
             databaseID
         );
-        const results = await fetchAllResults(databaseID);
+        const { restaurants: results, problems: parseProblems } =
+            await fetchAllResults(databaseID);
         const restaurantMap = new Map();
 
         results.forEach((restaurant) => {
@@ -278,6 +295,7 @@ async function fetchPlacesFromNotion(
 
         const newCacheValue: CacheValue = {
             restaurantMap: Object.fromEntries(restaurantMap),
+            problems: [...parseProblems, ...detectDuplicates(results)],
             lastUpdated: lastModifiedDate.toISOString(),
         };
 
@@ -308,22 +326,115 @@ async function fetchPlacesFromNotion(
     );
 
     // Fetch only new entries not in the cache
-    const newEntries = await fetchAllResults(
-        databaseID,
-        new Date(cachedValue.lastUpdated)
-    );
+    const { restaurants: newEntries, problems: newParseProblems } =
+        await fetchAllResults(databaseID, new Date(cachedValue.lastUpdated));
     const restaurantMap = new Map(Object.entries(cachedValue.restaurantMap));
 
     newEntries.forEach((restaurant) => {
         restaurantMap.set(restaurant.id, restaurant);
     });
 
+    // Parse-error problems must be carried forward across syncs: a broken row's
+    // last_edited_time doesn't change, so it never reappears in a future
+    // `after:`-filtered fetch, and would otherwise silently disappear from the
+    // problems list even though the row is still broken.
+    const parseProblemsById = new Map(
+        (cachedValue.problems ?? [])
+            .filter((p) => p.type === "parse-error")
+            .map((p) => [p.placeIds[0], p])
+    );
+    newEntries.forEach((r) => parseProblemsById.delete(r.id));
+    newParseProblems.forEach((p) => parseProblemsById.set(p.placeIds[0], p));
+
+    const duplicateProblems = detectDuplicates(
+        Array.from(restaurantMap.values())
+    );
+
     cachedValue.lastUpdated = lastModifiedDate.toISOString();
     cachedValue.restaurantMap = Object.fromEntries(restaurantMap);
+    cachedValue.problems = [
+        ...Array.from(parseProblemsById.values()),
+        ...duplicateProblems,
+    ];
 
     await VercelKVCache.set(databaseID, cachedValue);
 
     return Array.from(restaurantMap.values());
+}
+
+async function getProblems(
+    databaseID: string
+): Promise<RepoRestaurantProblem[]> {
+    const cachedValue: CacheValue | undefined = await VercelKVCache.get(
+        databaseID
+    );
+
+    return cachedValue?.problems ?? [];
+}
+
+function detectDuplicates(
+    restaurants: RepoRestaurant[]
+): RepoRestaurantProblem[] {
+    const groups = new Map<string, RepoRestaurant[]>();
+
+    for (const restaurant of restaurants) {
+        if (restaurant.mapsUrl === "") {
+            continue;
+        }
+
+        const key = normalizeMapsUrl(restaurant.mapsUrl);
+        const group = groups.get(key) ?? [];
+        group.push(restaurant);
+        groups.set(key, group);
+    }
+
+    return Array.from(groups.values())
+        .filter((group) => group.length > 1)
+        .map((group) => ({
+            type: "duplicate" as const,
+            placeIds: group.map((r) => r.id),
+            placeNames: group.map((r) => r.name),
+            reason: `${group.length} entries share the same Google Maps link`,
+        }));
+}
+
+async function archivePlace(databaseID: string, placeID: string): Promise<void> {
+    const response = await fetch(`${NOTION_API_URL}/pages/${placeID}`, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+            "Notion-Version": `${process.env.NOTION_API_VERSION}`,
+            "Content-type": "application/json",
+        },
+        body: JSON.stringify({ archived: true }),
+    });
+
+    if (!response.ok) {
+        throw await notionErrorFromResponse(response);
+    }
+
+    const cachedValue: CacheValue | undefined = await VercelKVCache.get(
+        databaseID
+    );
+
+    if (cachedValue !== undefined && cachedValue !== null) {
+        const restaurantMap = new Map(
+            Object.entries(cachedValue.restaurantMap)
+        );
+
+        const deleted = restaurantMap.delete(placeID);
+        const remainingProblems = (cachedValue.problems ?? []).filter(
+            (p) => !p.placeIds.includes(placeID)
+        );
+        const problemsChanged =
+            remainingProblems.length !== (cachedValue.problems ?? []).length;
+
+        if (deleted || problemsChanged) {
+            cachedValue.restaurantMap = Object.fromEntries(restaurantMap);
+            cachedValue.problems = remainingProblems;
+            await VercelKVCache.set(databaseID, cachedValue);
+        }
+    }
 }
 
 async function patchPlaceMetadata(
@@ -532,8 +643,9 @@ async function insertPlaceIntoCache(
 async function fetchAllResults(
     databaseID: string,
     lastModifiedDate?: Date
-): Promise<RepoRestaurant[]> {
-    let results: RepoRestaurant[] = [];
+): Promise<{ restaurants: RepoRestaurant[]; problems: RepoRestaurantProblem[] }> {
+    let restaurants: RepoRestaurant[] = [];
+    let problems: RepoRestaurantProblem[] = [];
     let hasMore = true;
     let start_cursor: string | undefined = undefined;
 
@@ -555,9 +667,14 @@ async function fetchAllResults(
             }
         );
 
-        res.results.map((entry: any) => {
-            results.push(jsonEntryToPlaceItem(entry));
-        });
+        for (const entry of res.results) {
+            try {
+                restaurants.push(jsonEntryToPlaceItem(entry));
+            } catch (e) {
+                console.error("Skipping unparseable Notion entry:", e);
+                problems.push(buildParseProblem(entry, e));
+            }
+        }
 
         console.debug(`Received response from Notion ${res.results.length}`);
 
@@ -565,7 +682,29 @@ async function fetchAllResults(
         start_cursor = res.next_cursor;
     }
 
-    return results;
+    return { restaurants, problems };
+}
+
+function buildParseProblem(entry: any, error: unknown): RepoRestaurantProblem {
+    const partialName = extractPartialName(entry);
+
+    return {
+        type: "parse-error",
+        placeIds: [entry.id],
+        placeNames: partialName ? [partialName] : [],
+        reason: error instanceof Error ? error.message : "Unknown parse error",
+        notionUrls: entry.url ? [entry.url] : undefined,
+    };
+}
+
+function extractPartialName(entry: any): string | undefined {
+    for (const key of Object.keys(entry.properties ?? {})) {
+        if (key.toLocaleLowerCase() === "name") {
+            return entry.properties[key]?.title?.[0]?.text?.content;
+        }
+    }
+
+    return undefined;
 }
 
 function buildDatabasePOSTRequest(
@@ -638,7 +777,7 @@ function jsonEntryToPlaceItem(entry: any): RepoRestaurant {
         switch (key.toLocaleLowerCase()) {
             case nameLabel: {
                 if (entry.properties[key].title[0] === undefined) {
-                    console.error("Name is null");
+                    throw new Error("Name is missing");
                 }
 
                 newPlace.name = entry.properties[key].title[0].text.content;

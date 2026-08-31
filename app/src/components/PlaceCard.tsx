@@ -1,19 +1,81 @@
+"use client";
+
 import { Restaurant } from "@/lib/places/domain/restaurant";
 import styles from "./placeCard.module.css";
 import { UserRole } from "@/lib/constants/enums";
 import { PriceMap, RatingMap, RestaurantTypeMap } from "./restaurant-items";
-import { JSX, RefObject } from "react";
-import { EditIcon, GoogleMapsMarker } from "@/lib/constants/svg";
+import { JSX, RefObject, useEffect, useRef, useState } from "react";
+import {
+    CloseIcon,
+    EditIcon,
+    GoogleMapsMarker,
+    TrashIcon,
+} from "@/lib/constants/svg";
+
+const DRAG_DISMISS_THRESHOLD_PX = 80;
 
 export default function PlaceCard({
     place,
     userRole,
+    onClose,
 }: {
     place: Restaurant | null;
     userRole: RefObject<string>;
+    onClose: () => void;
 }) {
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const dragStartY = useRef<number | null>(null);
+
+    useEffect(() => {
+        setIsConfirmingDelete(false);
+        setIsDeleting(false);
+    }, [place?.id]);
+
     if (place === null) {
         return null;
+    }
+
+    async function handleConfirmDelete() {
+        if (place === null) {
+            return;
+        }
+
+        setIsDeleting(true);
+
+        try {
+            const response = await fetch(`/api/restaurants/${place.id}`, {
+                method: "DELETE",
+            });
+
+            if (!response.ok) {
+                throw new Error("Delete failed");
+            }
+
+            onClose();
+            window.location.reload();
+        } catch (e) {
+            console.error(e);
+            setIsDeleting(false);
+            setIsConfirmingDelete(false);
+        }
+    }
+
+    function handleDragPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+        dragStartY.current = e.clientY;
+    }
+
+    function handleDragPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+        if (dragStartY.current === null) {
+            return;
+        }
+
+        const dragDistance = e.clientY - dragStartY.current;
+        dragStartY.current = null;
+
+        if (dragDistance > DRAG_DISMISS_THRESHOLD_PX) {
+            onClose();
+        }
     }
 
     let typeElems: JSX.Element[] = [];
@@ -88,19 +150,70 @@ export default function PlaceCard({
 
     return (
         <div className={styles.placeCard}>
-            <div className={styles.spacedRow}>
-                <h2>{place.name}</h2>
-                {userRole.current === UserRole.ADMIN && (
-                    <button
-                        className={styles.editBtn}
-                        onClick={() => {
-                            window.location.href = `/restaurants/edit?placeId=${place.id}`;
-                        }}
-                    >
-                        <EditIcon />
-                        Edit
-                    </button>
-                )}
+            <div className={styles.header}>
+                <div
+                    className={styles.dragHandle}
+                    onPointerDown={handleDragPointerDown}
+                    onPointerUp={handleDragPointerUp}
+                />
+                <div className={styles.spacedRow}>
+                    <h2>{place.name}</h2>
+                    <div className={styles.headerActions}>
+                        {userRole.current === UserRole.ADMIN && (
+                            <>
+                                <button
+                                    className={styles.editBtn}
+                                    onClick={() => {
+                                        window.location.href = `/restaurants/edit?placeId=${place.id}`;
+                                    }}
+                                >
+                                    <EditIcon />
+                                    Edit
+                                </button>
+                                {isConfirmingDelete ? (
+                                    <div className={styles.confirmDeleteRow}>
+                                        <span className={styles.confirmText}>
+                                            Delete this place?
+                                        </span>
+                                        <button
+                                            className={styles.confirmDeleteBtn}
+                                            disabled={isDeleting}
+                                            onClick={handleConfirmDelete}
+                                        >
+                                            {isDeleting ? "..." : "Yes"}
+                                        </button>
+                                        <button
+                                            className={styles.cancelDeleteBtn}
+                                            disabled={isDeleting}
+                                            onClick={() =>
+                                                setIsConfirmingDelete(false)
+                                            }
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        className={styles.deleteBtn}
+                                        onClick={() =>
+                                            setIsConfirmingDelete(true)
+                                        }
+                                    >
+                                        <TrashIcon />
+                                        Delete
+                                    </button>
+                                )}
+                            </>
+                        )}
+                        <button
+                            className={styles.closeBtn}
+                            onClick={onClose}
+                            aria-label="Close"
+                        >
+                            <CloseIcon />
+                        </button>
+                    </div>
+                </div>
             </div>
             <div className={styles.spacedRow}>
                 <div className={styles.row}>

@@ -94,3 +94,34 @@ export async function PATCH(
         return NextResponse.json({ error: "update_failed" }, { status: 502 });
     }
 }
+
+// Notion has no true delete; this archives the page (moves it to trash), which is enough to
+// stop it showing up anywhere the app reads from Notion.
+export async function DELETE(
+    _: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+        return auth.response;
+    }
+
+    const id = (await params).id;
+
+    const repoImpl = new NotionAPIRestaurantsRepository();
+    const restaurantService: RestaurantsService = new RestaurantsImpl(repoImpl);
+
+    try {
+        await restaurantService.deletePlace(id);
+        console.info("Deleted place %s by %s", id, auth.email);
+
+        return NextResponse.json({});
+    } catch (e) {
+        if (e instanceof NotionAPIError) {
+            return notionErrorResponse(e);
+        }
+
+        console.error("Failed to delete place %s: %s", id, e);
+        return NextResponse.json({ error: "delete_failed" }, { status: 502 });
+    }
+}

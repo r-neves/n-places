@@ -1,4 +1,5 @@
 import { DatabaseSchema, NewRestaurant, Restaurant } from "./domain/restaurant";
+import { RestaurantProblem } from "./domain/problem";
 import { RestaurantsRepository } from "./repository/interface";
 
 export interface RestaurantsService {
@@ -10,6 +11,8 @@ export interface RestaurantsService {
     updateRestaurant(id: string, place: NewRestaurant): Promise<Restaurant>;
     findByMapsUrl(mapsUrl: string): Promise<Restaurant | null>;
     listRecommenders(): Promise<string[]>;
+    deletePlace(placeID: string): Promise<void>;
+    getProblems(): Promise<RestaurantProblem[]>;
 }
 
 export class RestaurantsImpl implements RestaurantsService {
@@ -52,5 +55,13 @@ export class RestaurantsImpl implements RestaurantsService {
 
     async listRecommenders(): Promise<string[]> {
         return this.repository.listRecommenders();
+    }
+
+    async deletePlace(placeID: string): Promise<void> {
+        return this.repository.deletePlace(placeID);
+    }
+
+    async getProblems(): Promise<RestaurantProblem[]> {
+        return this.repository.getProblems();
     }
 }
