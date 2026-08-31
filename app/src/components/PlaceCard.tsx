@@ -13,6 +13,7 @@ import {
 } from "@/lib/constants/svg";
 
 const DRAG_DISMISS_THRESHOLD_PX = 80;
+const DRAG_DISMISS_ANIMATION_MS = 200;
 
 export default function PlaceCard({
     place,
@@ -26,10 +27,15 @@ export default function PlaceCard({
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const dragStartY = useRef<number | null>(null);
+    const cardRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setIsConfirmingDelete(false);
         setIsDeleting(false);
+        // A new place can be selected (via search, another marker) without the previous
+        // card ever going through a drag-to-dismiss, so any leftover offset has to be
+        // cleared here rather than only at the end of a drag.
+        setCardOffset(0, false);
     }, [place?.id]);
 
     if (place === null) {
@@ -75,8 +81,24 @@ export default function PlaceCard({
         } catch {}
     }
 
+    // Moves the card directly via the DOM rather than React state — this runs on every
+    // pointermove during a drag, and re-rendering the whole card at that rate is both
+    // unnecessary (nothing else about it changes) and visibly less smooth.
+    function setCardOffset(offsetPx: number, animated: boolean) {
+        const card = cardRef.current;
+        if (!card) {
+            return;
+        }
+
+        card.style.transition = animated
+            ? `transform ${DRAG_DISMISS_ANIMATION_MS}ms ease`
+            : "none";
+        card.style.transform = offsetPx === 0 ? "" : `translateY(${offsetPx}px)`;
+    }
+
     function handleDragPointerDown(e: React.PointerEvent<HTMLDivElement>) {
         dragStartY.current = e.clientY;
+        setCardOffset(0, false);
         // Keeps this element receiving move/up events for the rest of the gesture even if the
         // finger drifts off the (small) handle — without this, a drifted touch falls through to
         // the page, which mobile browsers read as a pull-to-refresh drag.
@@ -91,6 +113,12 @@ export default function PlaceCard({
         // Belt-and-suspenders alongside `touch-action: none` and `overscroll-behavior:
         // contain` — stops the browser from treating this drag as a page gesture.
         e.preventDefault();
+
+        // Only follows the finger downward — an upward drag on the handle isn't a gesture
+        // this card responds to, and letting the offset go negative would pull the card up
+        // past its resting position instead of just doing nothing.
+        const offset = Math.max(0, e.clientY - dragStartY.current);
+        setCardOffset(offset, false);
     }
 
     function handleDragPointerUp(e: React.PointerEvent<HTMLDivElement>) {
@@ -103,13 +131,23 @@ export default function PlaceCard({
         tryPointerCapture(e, false);
 
         if (dragDistance > DRAG_DISMISS_THRESHOLD_PX) {
-            onClose();
+            // Finishes the slide the rest of the way off-screen before actually closing —
+            // calling onClose() straight away would unmount the card mid-drag with no
+            // animation, which is what this whole gesture is meant to avoid.
+            setCardOffset(
+                cardRef.current?.getBoundingClientRect().height ?? 1000,
+                true
+            );
+            window.setTimeout(onClose, DRAG_DISMISS_ANIMATION_MS);
+        } else {
+            setCardOffset(0, true);
         }
     }
 
     function handleDragPointerCancel(e: React.PointerEvent<HTMLDivElement>) {
         dragStartY.current = null;
         tryPointerCapture(e, false);
+        setCardOffset(0, true);
     }
 
     let typeElems: JSX.Element[] = [];
@@ -183,7 +221,7 @@ export default function PlaceCard({
 
 
     return (
-        <div className={styles.placeCard}>
+        <div className={styles.placeCard} ref={cardRef}>
             <div className={styles.header}>
                 <div
                     className={styles.dragHandle}
