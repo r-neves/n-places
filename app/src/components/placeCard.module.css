@@ -6,6 +6,7 @@
     left: 0;
     max-height: 85vh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     border-top-left-radius: 24px;
     border-top-right-radius: 24px;
     background-color: #ffffff;
@@ -23,14 +24,24 @@
     z-index: 1;
 }
 
+/* The visible bar is thin, but the touch target extends into the padding —
+   a 4px-tall strip is too small to reliably grab with a thumb. */
 .dragHandle {
+    width: 100%;
+    padding: 10px 0 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    cursor: grab;
+}
+
+.dragHandle::before {
+    content: "";
     width: 36px;
     height: 4px;
     border-radius: 2px;
     background-color: #d0d0d0;
-    margin: 0 auto 10px auto;
-    touch-action: none;
-    cursor: grab;
 }
 
 @media (width > 800px) {

@@ -61,8 +61,36 @@ export default function PlaceCard({
         }
     }
 
+    // setPointerCapture/releasePointerCapture can throw NotFoundError if the browser doesn't
+    // consider the pointer "active" (observed with synthetic events, and possible in real
+    // browsers if capture was already released some other way) — always swallowed, since losing
+    // capture should degrade to a normal (uncaptured) drag rather than break the gesture.
+    function tryPointerCapture(e: React.PointerEvent<HTMLDivElement>, capture: boolean) {
+        try {
+            if (capture) {
+                e.currentTarget.setPointerCapture(e.pointerId);
+            } else {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+            }
+        } catch {}
+    }
+
     function handleDragPointerDown(e: React.PointerEvent<HTMLDivElement>) {
         dragStartY.current = e.clientY;
+        // Keeps this element receiving move/up events for the rest of the gesture even if the
+        // finger drifts off the (small) handle — without this, a drifted touch falls through to
+        // the page, which mobile browsers read as a pull-to-refresh drag.
+        tryPointerCapture(e, true);
+    }
+
+    function handleDragPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+        if (dragStartY.current === null) {
+            return;
+        }
+
+        // Belt-and-suspenders alongside `touch-action: none` and `overscroll-behavior:
+        // contain` — stops the browser from treating this drag as a page gesture.
+        e.preventDefault();
     }
 
     function handleDragPointerUp(e: React.PointerEvent<HTMLDivElement>) {
@@ -72,10 +100,16 @@ export default function PlaceCard({
 
         const dragDistance = e.clientY - dragStartY.current;
         dragStartY.current = null;
+        tryPointerCapture(e, false);
 
         if (dragDistance > DRAG_DISMISS_THRESHOLD_PX) {
             onClose();
         }
+    }
+
+    function handleDragPointerCancel(e: React.PointerEvent<HTMLDivElement>) {
+        dragStartY.current = null;
+        tryPointerCapture(e, false);
     }
 
     let typeElems: JSX.Element[] = [];
@@ -154,7 +188,9 @@ export default function PlaceCard({
                 <div
                     className={styles.dragHandle}
                     onPointerDown={handleDragPointerDown}
+                    onPointerMove={handleDragPointerMove}
                     onPointerUp={handleDragPointerUp}
+                    onPointerCancel={handleDragPointerCancel}
                 />
                 <div className={styles.spacedRow}>
                     <h2>{place.name}</h2>
