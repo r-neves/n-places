@@ -19,6 +19,16 @@ export interface RepoRestaurantMetadata {
 	coordinates: { latitude: number; longitude: number };
 }
 
+export type RepoRestaurantProblemType = "duplicate" | "parse-error";
+
+export interface RepoRestaurantProblem {
+	type: RepoRestaurantProblemType;
+	placeIds: string[];
+	placeNames: string[];
+	reason: string;
+	notionUrls?: string[];
+}
+
 export interface RepoSchemaOption {
 	id: string;
 	color: string;
@@ -73,4 +83,6 @@ export interface RestaurantsRepository {
 	updateRestaurant(id: string, place: RepoNewRestaurant): Promise<RepoRestaurant>;
 	findByMapsUrl(mapsUrl: string): Promise<RepoRestaurant | null>;
 	listRecommenders(): Promise<string[]>;
+	deletePlace(placeID: string): Promise<void>;
+	getProblems(): Promise<RepoRestaurantProblem[]>;
 }

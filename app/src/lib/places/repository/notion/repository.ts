@@ -119,4 +119,17 @@ export class NotionAPIRestaurantsRepository implements RestaurantsRepository {
             process.env.RESTAURANTS_DATA_SOURCE_ID!
         );
     }
+
+    async deletePlace(placeID: string): Promise<void> {
+        await NotionAPIClient.archivePlace(
+            process.env.RESTAURANTS_DATA_SOURCE_ID!,
+            placeID
+        );
+    }
+
+    async getProblems() {
+        return await NotionAPIClient.getProblems(
+            process.env.RESTAURANTS_DATA_SOURCE_ID!
+        );
+    }
 }

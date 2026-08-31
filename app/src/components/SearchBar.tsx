@@ -126,10 +126,10 @@ export function SearchBar({
                         )}
                     </div>
                     <ul className={styles.searchSuggestions}>
-                        {filteredItems.map((item) => (
+                        {filteredItems.map((item, index) => (
                             <li
                                 className={styles.searchSuggestion}
-                                key={item.label}
+                                key={`${item.type}-${item.label}-${index}`}
                                 onClick={() => handleSelect(item)}
                             >
                                 <span>{item.label}</span> <span className={styles.itemType}>({itemType(item)})</span>

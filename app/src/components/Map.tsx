@@ -30,12 +30,14 @@ import {
 import FilterPills from "./FilterPills";
 import { SearchBar, SearchItem } from "./SearchBar";
 import Loading from "@/components/Loading";
-import { capitalize } from "@/lib/util/format";
+import { capitalize, normalizeMapsUrl, normalizeString } from "@/lib/util/format";
 import { UserRole } from "@/lib/constants/enums";
-import { normalize } from "path";
 import HiddenAdminPopup from "./HiddenAdminPopup";
 import { useSession } from "next-auth/react";
 import PlaceCard from "./PlaceCard";
+import ProblemsModal from "./ProblemsModal";
+import { RestaurantProblem } from "@/lib/places/domain/problem";
+import { WarningIcon } from "@/lib/constants/svg";
 
 const HOME_COORDINATES_LATITUDE = 38.773776659219195;
 const HOME_COORDINATES_LONGITUDE = -9.105364651707808;
@@ -56,6 +58,8 @@ export default function MapComponent() {
     let [places, setPlaces] = useState<Restaurant[]>([]);
     let [placeFilters, setPlaceFilters] = useState<PlaceFilters>(EMPTY_FILTERS);
     let [selectedPlace, setSelectedPlace] = useState<Restaurant | null>(null);
+    let [problems, setProblems] = useState<RestaurantProblem[]>([]);
+    let [isProblemsModalVisible, setIsProblemsModalVisible] = useState(false);
     // The three things that decide what a layer shows, kept apart so they can be combined
     // rather than overwrite each other — picking "Visited" in the search bar used to wipe out
     // whatever else was filtered. Refs rather than state because the map event handlers close
@@ -471,14 +475,21 @@ export default function MapComponent() {
         const recommenders = new Set<string>();
 
         for (const restaurant of restaurants) {
-            if (places.has(restaurant.mapsUrl)) {
+            // Prefer the maps URL as the dedup key since it identifies the physical
+            // place even when duplicate rows were filled in with different location
+            // text; fall back to name+location only when there's no maps URL to key on.
+            const placeKey =
+                restaurant.mapsUrl !== ""
+                    ? normalizeMapsUrl(restaurant.mapsUrl)
+                    : `${normalizeString(restaurant.name)}|${normalizeString(restaurant.location)}`;
+            if (places.has(placeKey)) {
                 console.warn(
-                    `Duplicate restaurant name: ${restaurant.mapsUrl}`
+                    `Duplicate restaurant: ${restaurant.name} (${restaurant.mapsUrl})`
                 );
                 continue;
             }
 
-            places.add(restaurant.mapsUrl);
+            places.add(placeKey);
 
             items.push({
                 label: restaurant.name,
@@ -505,7 +516,7 @@ export default function MapComponent() {
                 },
             });
 
-            const normalizedLocation = normalize(restaurant.location);
+            const normalizedLocation = normalizeString(restaurant.location);
             if (locations.has(normalizedLocation)) {
                 continue;
             }
@@ -688,6 +699,15 @@ export default function MapComponent() {
 
             userRole.current = response === "" ? UserRole.VIEWER : response;
             setIsAdmin(userRole.current === UserRole.ADMIN);
+
+            if (userRole.current === UserRole.ADMIN) {
+                fetch("/api/restaurants/problems", { cache: "no-store" })
+                    .then((response) => response.json())
+                    .then((data: RestaurantProblem[]) => setProblems(data))
+                    .catch((error) =>
+                        console.error("Failed to fetch problems", error)
+                    );
+            }
         };
 
         updateUserRole();
@@ -735,11 +755,29 @@ export default function MapComponent() {
                     </span>
                 </div>
             )}
-            <PlaceCard place={selectedPlace} userRole={userRole} />
+            <PlaceCard
+                place={selectedPlace}
+                userRole={userRole}
+                onClose={() => selectPlace(null)}
+            />
             <HiddenAdminPopup
                 isVisible={isHiddenPopupVisible}
                 setIsVisible={setIsHiddenPopupVisible}
                 userRole={userRole}
+            />
+            {isAdmin && problems.length > 0 && (
+                <button
+                    className={styles.problemsButton}
+                    onClick={() => setIsProblemsModalVisible(true)}
+                    aria-label="Data problems"
+                >
+                    <WarningIcon />
+                </button>
+            )}
+            <ProblemsModal
+                isVisible={isProblemsModalVisible}
+                setIsVisible={setIsProblemsModalVisible}
+                problems={problems}
             />
         </div>
     );
