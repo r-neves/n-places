@@ -87,10 +87,22 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  /* Without this, dragging down anywhere on the page (the map fills the whole
-     viewport, so there's no scrollable ancestor to absorb it) is interpreted
-     as a pull-to-refresh gesture by mobile browsers — most noticeably when
-     dragging PlaceCard's handle down to dismiss it. */
+}
+
+/* Without this, dragging down anywhere on the page (the map fills the whole
+   viewport, so there's no scrollable ancestor to absorb it) is interpreted as a
+   pull-to-refresh gesture by mobile browsers — most noticeably when dragging
+   PlaceCard's handle down to dismiss it.
+
+   Only on the root, never on body: `overflow-x: hidden` above computes body's
+   overflow-y to `auto`, which makes body its own scroll box — an empty one, since
+   the root is what actually scrolls the document. Containing that box's overscroll
+   means a touch drag anywhere on a long page tries to scroll body, finds nothing
+   to scroll, and is stopped from chaining up to the root, leaving the add and edit
+   forms unscrollable on mobile. The root carries the viewport's overscroll
+   behaviour, which is the one pull-to-refresh reads, so this is the only place the
+   declaration is needed. */
+html {
   overscroll-behavior-y: contain;
 }
 
