@@ -13,6 +13,7 @@ import {
     FilterSpecification,
     ExpressionSpecification,
     StyleSpecification,
+    setWorkerUrl,
 } from "maplibre-gl";
 import { Restaurant } from "@/lib/places/domain/restaurant";
 import {
@@ -366,7 +367,14 @@ export default function MapComponent() {
                 zoom: 15,
             });
 
-            selectPlace(JSON.parse(place.properties.place));
+            // MapLibre 6 hands nested feature properties back as objects; older versions
+            // flattened them to JSON strings.
+            const placeProperty = place.properties.place;
+            selectPlace(
+                typeof placeProperty === "string"
+                    ? JSON.parse(placeProperty)
+                    : placeProperty
+            );
         };
 
         const onEmptyClickHandler = (
@@ -669,6 +677,9 @@ export default function MapComponent() {
                 },
             };
 
+            // Turbopack can't bundle MapLibre's worker, so it is served from public/ — see
+            // scripts/copy-maplibre-worker.mjs.
+            setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
             map.current = new MapGL({
                 attributionControl: false,
                 container: "mapElem",

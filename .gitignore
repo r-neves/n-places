@@ -48,3 +48,6 @@ workbox***.js.map
 # Serwist
 public/sw*
 public/swe-worker*
+
+# MapLibre worker, copied from node_modules by app/scripts/copy-maplibre-worker.mjs
+app/public/maplibre/
