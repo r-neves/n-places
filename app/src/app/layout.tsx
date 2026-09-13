@@ -1,4 +1,7 @@
 import { Inter } from "next/font/google";
+// Bundled from the installed package so the stylesheet always matches the maplibre-gl version.
+// Imported before globals.css so the overrides there still win.
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -62,12 +65,6 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
-            <head>
-                <link
-                    rel="stylesheet"
-                    href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css"
-                />
-            </head>
             <body className={inter.className}>
                 <SessionProvider>
                     {children}

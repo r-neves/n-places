@@ -1,8 +1,8 @@
-import type { StyleImageInterface } from 'maplibre-gl';
+import type { Map, StyleImageInterface } from 'maplibre-gl';
 
 // This implements `StyleImageInterface`
 // to draw a pulsing dot icon on the map.
-export function pulsingDot(map: maplibregl.Map, size = 100, animationDuration = 1500) : StyleImageInterface {
+export function pulsingDot(map: Map, size = 100, animationDuration = 1500) : StyleImageInterface {
 	// biome-ignore lint/style/noNonNullAssertion: <explanation>
 const  context = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
 
